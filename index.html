@@ -6,7 +6,13 @@
   <meta name="theme-color" content="#002060">
   <meta name="description" content="LOTI-CUENTAS: saca las cuentas de tus lotizaciones (separaciones, gastos y reparto entre socios) desde el celular.">
   <title>LOTI-CUENTAS</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23002060'/%3E%3Cpath d='M14 46V18h6v22h12v6zM36 18h14v28H36z' fill='%23ffd400'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LOTI-CUENTAS">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -33,6 +39,16 @@
 
   <main class="wrap">
     <p class="privacy-note">🔒 Tus datos se guardan solo en este dispositivo; haz respaldo en JSON.</p>
+
+    <div class="install-banner no-print" id="installBanner" hidden>
+      <img src="icons/icon-192.png" alt="" width="44" height="44">
+      <div class="install-text">
+        <strong>Instala LOTI-CUENTAS como app</strong>
+        <span id="installHint">Ábrela desde tu pantalla de inicio y úsala sin internet.</span>
+      </div>
+      <button type="button" class="btn btn-primary" data-action="instalar" id="btnInstalar">Instalar</button>
+      <button type="button" class="install-close" data-action="cerrarInstalar" aria-label="Ocultar aviso">×</button>
+    </div>
 
     <!-- 1. Encabezado -->
     <section class="card">
@@ -164,6 +180,7 @@
         <button type="button" class="btn" data-action="importExcel">Importar Excel antiguo</button>
         <button type="button" class="btn" data-action="backup">Descargar respaldo (JSON)</button>
         <button type="button" class="btn" data-action="restore">Importar respaldo (JSON)</button>
+        <button type="button" class="btn" data-action="instalar" id="btnInstalar2" hidden>📲 Instalar como app</button>
       </div>
       <p class="hint">Los archivos se procesan solo en tu navegador; no se suben a ningún servidor.</p>
       <input type="file" id="fileExcel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
