@@ -72,11 +72,11 @@
     var ana = nuevoSocio('Ana Torres'), car = nuevoSocio('Carlos Mendoza'), ros = nuevoSocio('Rosa Huamán');
     l.socios = [ana, car, ros];
     l.separaciones = [
-      ['Pedro Ramírez Soto', 'A', '3', '900 111 001', '500', 'Yape', '2026-11-02', ana.id, 'Miguel'],
-      ['María Flores León', 'A', '4', '900 111 002', '800', 'Efectivo', '2026-11-03', '', 'Lucía'],
-      ['Luis Paredes Ccama', 'B', '1-2', '900 111 003', '1000', 'Yape', '2026-11-05', car.id, 'Miguel'],
-      ['Elena Vargas Ruiz', 'C', '7', '900 111 004', '300', 'Efectivo', '2026-11-08', '', 'Lucía'],
-      ['Jorge Salas Quispe', 'C', '8', '900 111 005', '400', 'Yape', '2026-11-10', ana.id, 'Miguel']
+      ['Pedro Ramírez Soto', 'A', '3', '900111001', '500', 'Yape', '2026-11-02', ana.id, 'Miguel'],
+      ['María Flores León', 'A', '4', '900111002', '800', 'Efectivo', '2026-11-03', '', 'Lucía'],
+      ['Luis Paredes Ccama', 'B', '1-2', '900111003', '1000', 'Yape', '2026-11-05', car.id, 'Miguel'],
+      ['Elena Vargas Ruiz', 'C', '7', '900111004', '300', 'Efectivo', '2026-11-08', '', 'Lucía'],
+      ['Jorge Salas Quispe', 'C', '8', '900111005', '400', 'Yape', '2026-11-10', ana.id, 'Miguel']
     ].map(function (r) {
       return { id: uid(), cliente: r[0], manzana: r[1], lotes: r[2], celular: r[3], adelanto: r[4], opcion: r[5], fecha: r[6], recibidoPor: r[7], boletero: r[8] };
     });
@@ -101,6 +101,7 @@
         Object.keys(n).forEach(function (k) { if (s && s[k] != null) n[k] = String(s[k]); });
         if (n.opcion !== 'Yape' && n.opcion !== 'Efectivo') n.opcion = '';
         n.adelanto = limpiarMonto(n.adelanto);
+        n.celular = partirCel(n.celular).join(' / ');
         return n;
       }) : [],
       gastos: Array.isArray(l.gastos) ? l.gastos.map(function (g) {
@@ -200,10 +201,15 @@
 
   /** "900 111 222 / 955 000 111" => ["900 111 222", "955 000 111"] (máx. 3) */
   function partirCel(c) {
-    return String(c || '').split('/').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 3);
+    return String(c || '').split('/').map(limpiarCel).filter(Boolean).slice(0, 3);
+  }
+  /** Celular: solo dígitos, máximo 9 (a un número antiguo más largo, p. ej. con +51, se le dejan los últimos 9). */
+  function limpiarCel(v) {
+    var d = String(v || '').replace(/\D/g, '');
+    return d.length > 9 ? d.slice(-9) : d;
   }
   function inputCel(id, valor, i) {
-    return '<input class="in" type="tel" inputmode="tel" autocomplete="off" maxlength="15" placeholder="' + (i ? 'Otro número' : 'Celular') +
+    return '<input class="in" type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="' + (i ? 'Otro número' : 'Celular') +
       '" value="' + esc(valor) + '" data-cel="' + esc(id) + '" aria-label="Celular ' + (i + 1) + '">';
   }
   function celularesHTML(s) {
@@ -393,7 +399,7 @@
     if (el.dataset && el.dataset.cel) {
       var sp = buscar('separaciones', el.dataset.cel);
       if (!sp) return;
-      var limpioCel = el.value.replace(/[^\d +\-]/g, '');
+      var limpioCel = el.value.replace(/\D/g, '').slice(0, 9);
       if (limpioCel !== el.value) el.value = limpioCel;
       sp.celular = Array.prototype.map.call(el.closest('.cel-list').querySelectorAll('input'), function (x) { return x.value.trim(); })
         .filter(Boolean).join(' / ');
