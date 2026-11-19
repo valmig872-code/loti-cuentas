@@ -42,7 +42,27 @@
       <input id="lugar" class="in in-lg" type="text" autocomplete="off" placeholder="Ej. Sector Las Flores">
     </section>
 
-    <!-- 2. Separaciones -->
+    <!-- 2. Socios -->
+    <section class="card">
+      <div class="card-head"><h2>Socios</h2></div>
+      <p class="hint" id="hintSocios"></p>
+      <div class="table-scroll">
+        <table class="grid" id="tblSoc">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th>Socio</th>
+              <th class="num">Yape (S/)</th>
+              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
+            </tr>
+          </thead>
+          <tbody id="socBody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-add no-print" data-action="addSoc">+ Agregar socio</button>
+    </section>
+
+    <!-- 3. Separaciones -->
     <section class="card">
       <div class="card-head">
         <h2>Lista de separaciones</h2>
@@ -83,7 +103,7 @@
       <button type="button" class="btn btn-add no-print" data-action="addSep">+ Agregar separación</button>
     </section>
 
-    <!-- 3. Gastos -->
+    <!-- 4. Gastos -->
     <section class="card">
       <div class="card-head"><h2>Gastos</h2></div>
       <div class="table-scroll">
@@ -110,26 +130,6 @@
       </div>
       <div class="sum-line"><span>Total gastos</span><strong id="sumGas"></strong></div>
       <button type="button" class="btn btn-add no-print" data-action="addGas">+ Agregar gasto</button>
-    </section>
-
-    <!-- 4. Socios -->
-    <section class="card">
-      <div class="card-head"><h2>Socios</h2></div>
-      <p class="hint" id="hintSocios"></p>
-      <div class="table-scroll">
-        <table class="grid" id="tblSoc">
-          <thead>
-            <tr>
-              <th class="c-n">N°</th>
-              <th>Socio</th>
-              <th class="num">Yape recibido (S/)</th>
-              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
-            </tr>
-          </thead>
-          <tbody id="socBody"></tbody>
-        </table>
-      </div>
-      <button type="button" class="btn btn-add no-print" data-action="addSoc">+ Agregar socio</button>
     </section>
 
     <!-- 5. Resultado -->

@@ -149,7 +149,11 @@ tfoot td { border-bottom: 0; padding-top: 8px !important; }
 .detalle > div { flex: 1; }
 
 #tblSoc { min-width: 0; }
-#tblSoc td:nth-child(3) { width: 150px; }
+#tblSoc td:nth-child(3) { width: 96px; }
+#tblSoc .c-del { width: 40px; }
+#tblSoc .btn-del { width: 36px; }
+#tblSoc td .in { padding-left: 8px; padding-right: 8px; }
+@media (min-width: 700px) { #tblSoc td:nth-child(3) { width: 170px; } }
 .yape-cell { display: flex; gap: 4px; align-items: center; }
 .btn-reset {
   flex: none; width: 40px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line);
