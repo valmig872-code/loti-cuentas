@@ -82,7 +82,7 @@ body {
   margin: 10px 0 0; padding: 8px 10px; border-radius: 8px;
   background: #fff6e0; color: #7a5400; font-size: .85rem;
 }
-.print-title { display: none; }
+#printDoc { display: none; }
 
 /* ---------- Inputs: editables vs calculados ---------- */
 .in {
@@ -126,15 +126,22 @@ td.c-n { font-size: .85rem; }
 tfoot td { border-bottom: 0; padding-top: 8px !important; }
 .tfoot-fill { background: transparent; }
 
-#tblSep { min-width: 1040px; }
+#tblSep { min-width: 1110px; }
 #tblSep td:nth-child(2) { min-width: 170px; }
+#tblSep td { vertical-align: top; }
+#tblSep td.c-n { padding-top: 14px; }
 #tblSep td:nth-child(3), #tblSep td:nth-child(4) { width: 80px; }
-#tblSep td:nth-child(5) { width: 125px; }
+#tblSep td:nth-child(5) { width: 165px; }
+.cel-list { display: flex; flex-direction: column; gap: 4px; padding: 2px 0; min-width: 160px; }
+.btn-mini {
+  min-height: 32px; padding: 0 8px; border-radius: 8px; border: 1px dashed #9fb2d8;
+  background: #fff; color: var(--navy-2); font: inherit; font-size: .78rem; font-weight: 600; cursor: pointer;
+}
 #tblSep td:nth-child(6) { width: 115px; }
 #tblSep td:nth-child(7) { width: 112px; }
 #tblSep td:nth-child(8) { width: 150px; }
 #tblSep td:nth-child(9) { width: 150px; }
-#tblSep:not(.with-recibido) { min-width: 890px; }
+#tblSep:not(.with-recibido) { min-width: 960px; }
 #tblSep:not(.with-recibido) .col-recibido { display: none; }
 
 #tblGas { min-width: 620px; }
@@ -250,30 +257,47 @@ tfoot td { border-bottom: 0; padding-top: 8px !important; }
   .actions-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ---------- Impresión / PDF ---------- */
+/* ---------- Impresión / PDF: documento formal en blanco y negro ---------- */
 @media print {
-  @page { size: A4; margin: 12mm; }
-  body { background: #fff; font-size: 10.5pt; }
-  .topbar, .no-print, .sum-line, .privacy-note, .toast, .btn-reset, .switch { display: none !important; }
-  .wrap { max-width: none; padding: 0; }
-  .print-title { display: block; margin: 0 0 8px; color: var(--navy); font-size: 15pt; }
-  .card { box-shadow: none; padding: 0; margin-bottom: 12px; break-inside: avoid; }
-  .card h2 { font-size: 12pt; }
-  .table-scroll { overflow: visible; margin: 0; padding: 0; }
-  .grid { min-width: 0 !important; font-size: 9pt; }
-  .grid th { -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 4px; }
-  .grid td { padding: 2px 4px; border-bottom: 1px solid #ccc; }
-  .in, select.in {
-    border: 0 !important; background: transparent !important; padding: 0; min-height: 0;
-    -webkit-appearance: none; appearance: none; color: #000; font-size: 9pt;
+  @page { size: A4; margin: 14mm 12mm; }
+  html, body { background: #fff !important; color: #000; }
+  body { font: 10pt/1.35 Arial, Helvetica, sans-serif; }
+  .topbar, .toast, main > :not(#printDoc) { display: none !important; }
+  .wrap { max-width: none; padding: 0; margin: 0; }
+  #printDoc { display: block; color: #000; }
+
+  .pd-head { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 14px; }
+  .pd-kicker { margin: 0; font-size: 9pt; letter-spacing: 2px; text-transform: uppercase; }
+  .pd-head h1 { margin: 4px 0 2px; font-size: 16pt; text-transform: uppercase; letter-spacing: .5px; }
+  .pd-meta { margin: 0; font-size: 9pt; }
+
+  .pd section { margin-bottom: 12px; }
+  .pd-keep { break-inside: avoid; page-break-inside: avoid; }
+  .pd h2 { margin: 0 0 4px; font-size: 10.5pt; text-transform: uppercase; letter-spacing: .5px; }
+  .pd table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+  .pd thead { display: table-header-group; }
+  .pd tr { break-inside: avoid; }
+  .pd th {
+    text-align: left; font-weight: bold; padding: 4px 5px;
+    border-top: 1.5px solid #000; border-bottom: 1.5px solid #000;
   }
-  .in::placeholder { color: transparent; }
-  .in-lg { font-size: 12pt; }
-  .calc, .stat { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .stats { grid-template-columns: repeat(4, 1fr); }
-  .stat-main { background: var(--calc-bg); }
-  .stat-main span, .stat-main small { color: var(--muted); }
-  .stat-main strong { color: var(--calc-text); }
-  .badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .detalle .lbl { display: none; }
+  .pd td { padding: 3px 5px; border-bottom: .5px solid #999; vertical-align: top; }
+  .pd .num { text-align: right; white-space: nowrap; }
+  .pd .n { width: 26px; text-align: center; }
+  .pd tr.tot td { border-top: 1.5px solid #000; border-bottom: 0; font-weight: bold; }
+
+  /* Lo que se resalta: resultados y montos finales */
+  .pd-res { width: 62% !important; border: 1.5px solid #000; }
+  .pd-res td { padding: 5px 8px; }
+  .pd-res tr.hl td {
+    font-weight: bold; font-size: 10.5pt; background: #e6e6e6;
+    border-top: 1px solid #000; border-bottom: 1px solid #000;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .pd-dist .final { font-weight: bold; font-size: 10pt; }
+  .pd-dist .estado { font-weight: bold; font-size: 8.5pt; white-space: nowrap; }
+  .pd-dist tbody tr:last-child td { border-bottom: 1.5px solid #000; }
+
+  .pd-firmas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 34px 28px; margin-top: 34px; }
+  .pd-firma { border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 9pt; }
 }

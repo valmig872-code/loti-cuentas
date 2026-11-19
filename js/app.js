@@ -198,6 +198,23 @@
     return ' data-list="' + list + '" data-id="' + esc(id) + '" data-field="' + field + '"';
   }
 
+  /** "900 111 222 / 955 000 111" => ["900 111 222", "955 000 111"] (máx. 3) */
+  function partirCel(c) {
+    return String(c || '').split('/').map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 3);
+  }
+  function inputCel(id, valor, i) {
+    return '<input class="in" type="tel" inputmode="tel" autocomplete="off" maxlength="15" placeholder="' + (i ? 'Otro número' : 'Celular') +
+      '" value="' + esc(valor) + '" data-cel="' + esc(id) + '" aria-label="Celular ' + (i + 1) + '">';
+  }
+  function celularesHTML(s) {
+    var nums = partirCel(s.celular);
+    if (!nums.length) nums = [''];
+    var h = '<div class="cel-list">';
+    nums.forEach(function (n, i) { h += inputCel(s.id, n, i); });
+    if (nums.length < 3) h += '<button type="button" class="btn-mini no-print" data-addcel="' + esc(s.id) + '">+ otro número</button>';
+    return h + '</div>';
+  }
+
   function renderSep() {
     var l = cur();
     $('tblSep').classList.toggle('with-recibido', !!l.autoYape);
@@ -208,7 +225,7 @@
         '<td><input class="in" type="text" autocomplete="off" placeholder="Nombre del cliente" value="' + esc(s.cliente) + '"' + a('cliente') + '></td>' +
         '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.manzana) + '"' + a('manzana') + '></td>' +
         '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.lotes) + '"' + a('lotes') + '></td>' +
-        '<td><input class="in" type="tel" inputmode="tel" autocomplete="off" value="' + esc(s.celular) + '"' + a('celular') + '></td>' +
+        '<td>' + celularesHTML(s) + '</td>' +
         '<td><input class="in money" type="text" inputmode="decimal" placeholder="0.00" value="' + esc(s.adelanto) + '"' + a('adelanto') + ' data-kind="money"></td>' +
         '<td><select class="in"' + a('opcion') + '>' +
           '<option value=""' + (s.opcion === '' ? ' selected' : '') + '>—</option>' +
@@ -316,7 +333,6 @@
         '</tr>';
     }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px">Agrega socios para ver la distribución.</td></tr>';
 
-    $('printTitle').textContent = l.nombre;
     document.title = 'LOTI-CUENTAS · ' + l.nombre;
   }
 
@@ -339,6 +355,16 @@
   document.addEventListener('input', function (e) {
     var el = e.target;
     if (el.id === 'lugar') { cur().lugar = el.value; guardar(); actualizar(); return; }
+    if (el.dataset && el.dataset.cel) {
+      var sp = buscar('separaciones', el.dataset.cel);
+      if (!sp) return;
+      var limpioCel = el.value.replace(/[^\d +\-]/g, '');
+      if (limpioCel !== el.value) el.value = limpioCel;
+      sp.celular = Array.prototype.map.call(el.closest('.cel-list').querySelectorAll('input'), function (x) { return x.value.trim(); })
+        .filter(Boolean).join(' / ');
+      guardar();
+      return;
+    }
     var list = el.dataset && el.dataset.list;
     if (!list) return;
     var item = buscar(list, el.dataset.id);
@@ -433,6 +459,16 @@
       actualizar();
       return;
     }
+    if (btn.dataset.addcel) {
+      var box = btn.closest('.cel-list');
+      var cuantos = box.querySelectorAll('input').length;
+      if (cuantos < 3) {
+        btn.insertAdjacentHTML('beforebegin', inputCel(btn.dataset.addcel, '', cuantos));
+        box.querySelectorAll('input')[cuantos].focus();
+      }
+      if (cuantos + 1 >= 3) btn.remove();
+      return;
+    }
     if (btn.dataset.reset) {
       var s = buscar('socios', btn.dataset.reset);
       if (s) { s.yapeManual = false; s.yape = ''; guardar(); renderSoc(); actualizar(); }
@@ -450,7 +486,7 @@
       case 'whatsapp': copiarResumen(); break;
       case 'compartir': compartirResumen(); break;
       case 'excel': exportarExcel(); break;
-      case 'pdf': window.print(); break;
+      case 'pdf': imprimir(); break;
       case 'importExcel': $('fileExcel').click(); break;
       case 'backup': descargarRespaldo(); break;
       case 'restore': $('fileJson').click(); break;
@@ -509,6 +545,100 @@
     guardar(true); renderTodo();
     toast('Lotización borrada');
   }
+
+  /* ================= Documento de impresión (formal, blanco y negro) ================= */
+  function fechaDMY(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+    return m ? m[3] + '/' + m[2] + '/' + m[1] : '';
+  }
+  function hoyDMY() {
+    var d = new Date();
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
+  }
+  function tituloLot(l) { return (l.lugar || '').trim() || l.nombre; }
+
+  function renderImpresion() {
+    var l = cur(), r = C.calcular(l), S = C.soles;
+    var nombreSocio = {};
+    l.socios.forEach(function (s, i) { nombreSocio[s.id] = s.nombre || ('Socio ' + (i + 1)); });
+    var h = '';
+    h += '<header class="pd-head">' +
+      '<p class="pd-kicker">Rendición de cuentas</p>' +
+      '<h1>' + (/^lotizaci/i.test(tituloLot(l)) ? '' : 'Lotización ') + esc(tituloLot(l)) + '</h1>' +
+      '<p class="pd-meta">Fecha de emisión: ' + hoyDMY() + '</p>' +
+      '</header>';
+
+    // Socios
+    h += '<section><h2>1. Socios</h2><table><thead><tr><th class="n">N°</th><th>Socio</th><th class="num">Yape recibido</th></tr></thead><tbody>';
+    l.socios.forEach(function (s, i) {
+      h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(nombreSocio[s.id]) + '</td><td class="num">' + S(C.yapeSocio(l, s)) + '</td></tr>';
+    });
+    if (!l.socios.length) h += '<tr><td colspan="3">Sin socios registrados.</td></tr>';
+    h += '</tbody></table></section>';
+
+    // Separaciones
+    var conRec = !!l.autoYape;
+    h += '<section><h2>2. Lista de separaciones</h2><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
+      '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th>' + (conRec ? '<th>Recibido por</th>' : '') + '</tr></thead><tbody>';
+    l.separaciones.forEach(function (s, i) {
+      h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
+        '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td>' +
+        '<td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td><td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td>' +
+        (conRec ? '<td>' + (s.opcion === 'Yape' ? esc(nombreSocio[s.recibidoPor] || '') : '') + '</td>' : '') + '</tr>';
+    });
+    h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num">TOTAL ADELANTOS</td><td class="num">' + S(r.totalAdelantos) +
+      '</td><td colspan="' + (conRec ? 3 : 2) + '"></td></tr></tfoot></table></section>';
+
+    // Gastos
+    h += '<section><h2>3. Gastos</h2><table><thead><tr><th class="n">N°</th><th>Concepto</th><th>Detalle</th><th class="num">Costo</th></tr></thead><tbody>';
+    l.gastos.forEach(function (g, i) {
+      var det = g.tipo === 'personal' ? C.pos(g.cantidad) + ' persona(s) × ' + S(g.precioUnit) : 'Monto fijo';
+      h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(g.concepto) + '</td><td>' + det + '</td><td class="num">' + S(r.costos[i]) + '</td></tr>';
+    });
+    h += '</tbody><tfoot><tr class="tot"><td colspan="3" class="num">TOTAL GASTOS</td><td class="num">' + S(r.totalGastos) + '</td></tr></tfoot></table></section>';
+
+    // Resultado
+    h += '<section class="pd-keep"><h2>4. Resultado</h2><table class="pd-res"><tbody>' +
+      '<tr><td>Total adelantos</td><td class="num">' + S(r.totalAdelantos) + '</td></tr>' +
+      '<tr><td>(−) Total gastos</td><td class="num">' + S(r.totalGastos) + '</td></tr>' +
+      '<tr class="hl"><td>MONTO TOTAL RECAUDADO</td><td class="num">' + S(r.recaudado) + '</td></tr>' +
+      '<tr><td>Número de socios</td><td class="num">' + r.nSocios + '</td></tr>' +
+      '<tr class="hl"><td>MONTO PARA CADA SOCIO</td><td class="num">' + S(r.porSocio) + '</td></tr>' +
+      '</tbody></table></section>';
+
+    // Distribución
+    h += '<section class="pd-keep"><h2>5. Distribución de ganancias</h2><table class="pd-dist"><thead><tr><th class="n">N°</th><th>Socio</th>' +
+      '<th class="num">Le corresponde</th><th class="num">Descuento (Yape)</th><th class="num">Monto final</th><th>Situación</th></tr></thead><tbody>';
+    r.distribucion.forEach(function (d) {
+      h += '<tr><td class="n">' + d.n + '</td><td>' + esc(d.nombre || ('Socio ' + d.n)) + '</td><td class="num">' + S(r.porSocio) + '</td>' +
+        '<td class="num">' + S(d.descuento) + '</td><td class="num final">' + S(d.montoFinal) + '</td>' +
+        '<td class="estado">' + d.estado.toUpperCase() + '</td></tr>';
+    });
+    if (!r.distribucion.length) h += '<tr><td colspan="6">Sin socios registrados.</td></tr>';
+    h += '</tbody></table></section>';
+
+    // Firmas
+    if (l.socios.length) {
+      h += '<section class="pd-keep pd-firmas">';
+      l.socios.forEach(function (s) { h += '<div class="pd-firma">' + esc(nombreSocio[s.id]) + '</div>'; });
+      h += '</section>';
+    }
+    $('printDoc').innerHTML = h;
+  }
+
+  var tituloPrevio = null;
+  function imprimir() {
+    renderImpresion();
+    window.print();
+  }
+  window.addEventListener('beforeprint', function () {
+    renderImpresion();
+    if (tituloPrevio === null) tituloPrevio = document.title;
+    document.title = 'Cuentas - Lotizacion ' + tituloLot(cur()); // nombre sugerido del PDF
+  });
+  window.addEventListener('afterprint', function () {
+    if (tituloPrevio !== null) { document.title = tituloPrevio; tituloPrevio = null; }
+  });
 
   /* ================= Resumen WhatsApp ================= */
   function textoResumen() {

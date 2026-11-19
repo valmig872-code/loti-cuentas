@@ -34,8 +34,6 @@
   <main class="wrap">
     <p class="privacy-note">🔒 Tus datos se guardan solo en este dispositivo; haz respaldo en JSON.</p>
 
-    <h2 class="print-title" id="printTitle"></h2>
-
     <!-- 1. Encabezado -->
     <section class="card">
       <label class="field-label" for="lugar">Lugar de lotización</label>
@@ -178,6 +176,8 @@
       <input type="file" id="fileExcel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
       <input type="file" id="fileJson" accept=".json,application/json" hidden>
     </section>
+
+    <div id="printDoc" class="pd" aria-hidden="true"></div>
 
     <footer class="foot no-print">LOTI-CUENTAS · Los datos viven solo en este navegador.</footer>
   </main>
