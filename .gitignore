@@ -1,0 +1,11 @@
+# Nunca subir datos reales
+*.xlsx
+*.xls
+*.xlsm
+CUENTAS*FORMATO*
+*respaldo*.json
+
+# Herramientas locales
+.claude/
+.DS_Store
+Thumbs.db
