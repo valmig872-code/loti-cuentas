@@ -51,28 +51,29 @@
     return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   }
 
-  /** Separaciones agrupadas por boletero / personal que separó (las vacías se ignoran). */
+  function sepConDatos(s) {
+    return !!(String(s.cliente || '').trim() || pos(s.adelanto) > 0 || String(s.manzana || '').trim() || String(s.lotes || '').trim());
+  }
+
+  /** Grupos por boletero, en el orden de lot.boleteros. indices = todas sus separaciones; n = las que tienen datos. */
   function porBoletero(lot) {
-    var grupos = [], idx = {}, sin = null;
+    var map = {}, sin = null;
+    var nuevo = function (id, nombre, sinNombre) {
+      return { id: id, nombre: nombre, sinNombre: sinNombre, indices: [], n: 0, yape: 0, efectivo: 0, total: 0 };
+    };
+    var grupos = (lot.boleteros || []).map(function (b, i) {
+      var nom = String(b.nombre || '').replace(/\s+/g, ' ').trim();
+      var g = nuevo(b.id, nom || ('Boletero ' + (i + 1)), !nom);
+      map[b.id] = g;
+      return g;
+    });
     (lot.separaciones || []).forEach(function (s, i) {
-      if (!(String(s.cliente || '').trim() || pos(s.adelanto) > 0)) return;
-      var k = claveNombre(s.boletero);
-      var g;
-      if (!k) {
-        if (!sin) sin = { clave: '', nombre: 'Sin boletero', indices: [], n: 0, yape: 0, efectivo: 0, total: 0 };
-        g = sin;
-      } else {
-        if (!idx[k]) { idx[k] = { clave: k, nombre: '', escrituras: {}, indices: [], n: 0, yape: 0, efectivo: 0, total: 0 }; grupos.push(idx[k]); }
-        g = idx[k];
-        var esc = String(s.boletero).replace(/\s+/g, ' ').trim();
-        g.escrituras[esc] = (g.escrituras[esc] || 0) + 1;
-        // el nombre mostrado es la forma más escrita (en empate, la que empieza con mayúscula)
-        var may = /^[A-ZÁÉÍÓÚÑ]/;
-        if (!g.nombre || g.escrituras[esc] > g.escrituras[g.nombre] ||
-            (g.escrituras[esc] === g.escrituras[g.nombre] && may.test(esc) && !may.test(g.nombre))) g.nombre = esc;
-      }
+      var g = map[s.boleteroId];
+      if (!g) { if (!sin) sin = nuevo('', 'Sin boletero', true); g = sin; }
+      g.indices.push(i);
+      if (sepConDatos(s)) g.n++;
       var m = pos(s.adelanto);
-      g.indices.push(i); g.n++; g.total += m;
+      g.total += m;
       if (s.opcion === 'Yape') g.yape += m;
       if (s.opcion === 'Efectivo') g.efectivo += m;
     });
@@ -141,6 +142,6 @@
 
   global.Calc = {
     num: num, pos: pos, costoGasto: costoGasto, yapeAutomatico: yapeAutomatico,
-    yapeSocio: yapeSocio, estado: estado, porBoletero: porBoletero, claveNombre: claveNombre, calcular: calcular, soles: soles, EPS: EPS
+    yapeSocio: yapeSocio, estado: estado, porBoletero: porBoletero, claveNombre: claveNombre, sepConDatos: sepConDatos, calcular: calcular, soles: soles, EPS: EPS
   };
 })(typeof window !== 'undefined' ? window : this);

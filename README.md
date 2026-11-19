@@ -20,7 +20,7 @@ Replica la hoja de cálculo de cuentas de lotización:
 
 - Monto final negativo → en rojo, **"debe devolver"**. Positivo → **"se le debe pagar"**.
 - Interruptor opcional **"Registrar quién recibió el Yape"**: agrega la columna *Recibido por (socio)* y calcula solo el Yape de cada socio (se puede sobrescribir a mano; ↺ vuelve al automático).
-- **Recaudado por boletero**: en cada separación anota qué boletero o personal la hizo. La app suma lo que recaudó cada uno (total, Yape y efectivo) y muestra su lista de lotes por separado.
+- **Separaciones por boletero**: escribes una vez el nombre del boletero o personal y debajo anotas sus separaciones. Cada boletero muestra su subtotal en Yape, en efectivo y total; al final sale el total general. El total de adelantos sigue siendo la suma de todo.
 - Hasta 3 números de celular por separación.
 - Filas sin límite: agrega o elimina separaciones, gastos y socios.
 - Varias lotizaciones con nombre: abrir, duplicar, renombrar y borrar.

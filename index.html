@@ -70,59 +70,28 @@
           <span class="switch-text">Registrar quién recibió el Yape</span>
         </label>
       </div>
-      <div class="table-scroll">
-        <table class="grid" id="tblSep">
-          <thead>
-            <tr>
-              <th class="c-n">N°</th>
-              <th>Cliente</th>
-              <th>Manzana</th>
-              <th>Lotes</th>
-              <th>N° celular</th>
-              <th class="num">Adelanto (S/)</th>
-              <th>Opción</th>
-              <th>Día de firma</th>
-              <th>Boletero / personal</th>
-              <th class="col-recibido">Recibido por (socio)</th>
-              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
-            </tr>
-          </thead>
-          <tbody id="sepBody"></tbody>
-          <tfoot>
-            <tr>
-              <td colspan="5" class="tot-label">TOTAL adelantos</td>
-              <td class="num calc strong" id="totAdelantos"></td>
-              <td colspan="5" class="tfoot-fill"></td>
-            </tr>
-          </tfoot>
-        </table>
+      <p class="hint">Escribe el nombre del boletero una vez y debajo anota sus separaciones. Cada boletero tiene su subtotal.</p>
+      <div id="sepGroups" class="sep-groups"></div>
+      <button type="button" class="btn btn-add btn-add-bol no-print" data-action="addBol">+ Agregar boletero</button>
+      <div class="general">
+        <h3>Total general</h3>
+        <div class="table-scroll">
+          <table class="grid" id="tblGen">
+            <thead>
+              <tr>
+                <th>Boletero</th>
+                <th class="num">Yape</th>
+                <th class="num">Efectivo</th>
+                <th class="num">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody id="genBody"></tbody>
+            <tfoot id="genFoot"></tfoot>
+          </table>
+        </div>
       </div>
       <div class="sum-line"><span>Total adelantos</span><strong id="sumAdel"></strong></div>
       <p class="warn" id="warnYape" hidden></p>
-      <button type="button" class="btn btn-add no-print" data-action="addSep">+ Agregar separación</button>
-    </section>
-
-    <!-- 4. Recaudado por boletero -->
-    <section class="card">
-      <div class="card-head"><h2>Recaudado por boletero</h2></div>
-      <p class="hint">Se arma solo con la columna "Boletero / personal" de la lista de separaciones. Toca un nombre para ver sus lotes.</p>
-      <div class="table-scroll">
-        <table class="grid" id="tblBol">
-          <thead>
-            <tr>
-              <th>Boletero / personal</th>
-              <th class="num">Total recaudado</th>
-              <th class="num">Sep.</th>
-              <th class="num">Yape</th>
-              <th class="num">Efectivo</th>
-            </tr>
-          </thead>
-          <tbody id="bolBody"></tbody>
-          <tfoot id="bolFoot"></tfoot>
-        </table>
-      </div>
-      <div id="bolDetalle" class="bol-detalle"></div>
-      <datalist id="dlBoleteros"></datalist>
     </section>
 
     <!-- 5. Gastos -->

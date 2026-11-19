@@ -45,8 +45,11 @@
   }
 
   /* ================= Modelo ================= */
-  function nuevaSep() {
-    return { id: uid(), cliente: '', manzana: '', lotes: '', celular: '', adelanto: '', opcion: '', fecha: '', recibidoPor: '', boletero: '' };
+  function nuevaSep(boleteroId) {
+    return { id: uid(), cliente: '', manzana: '', lotes: '', celular: '', adelanto: '', opcion: '', fecha: '', recibidoPor: '', boleteroId: boleteroId || '' };
+  }
+  function nuevoBoletero(nombre) {
+    return { id: uid(), nombre: nombre || '' };
   }
   function nuevoGasto(concepto, tipo) {
     return { id: uid(), concepto: concepto || '', tipo: tipo || 'fijo', monto: '', precioUnit: '', cantidad: '' };
@@ -55,11 +58,12 @@
     return { id: uid(), nombre: nombre || '', yape: '', yapeManual: false };
   }
   function nuevaLot(nombre) {
-    var t = Date.now();
+    var t = Date.now(), b0 = nuevoBoletero('');
     return {
       id: uid(), nombre: nombre || ('Lotización – ' + mesAnio()), lugar: '',
       creado: t, actualizado: t, autoYape: false,
-      separaciones: [nuevaSep()],
+      boleteros: [b0],
+      separaciones: [nuevaSep(b0.id)],
       gastos: [nuevoGasto('Movilidad', 'fijo'), nuevoGasto('Personal', 'personal')],
       socios: [nuevoSocio(''), nuevoSocio('')]
     };
@@ -71,14 +75,16 @@
     l.lugar = 'Sector Los Girasoles (ejemplo)';
     var ana = nuevoSocio('Ana Torres'), car = nuevoSocio('Carlos Mendoza'), ros = nuevoSocio('Rosa Huamán');
     l.socios = [ana, car, ros];
+    var mig = nuevoBoletero('Miguel'), luc = nuevoBoletero('Lucía');
+    l.boleteros = [mig, luc];
     l.separaciones = [
-      ['Pedro Ramírez Soto', 'A', '3', '900111001', '500', 'Yape', '2026-11-02', ana.id, 'Miguel'],
-      ['María Flores León', 'A', '4', '900111002', '800', 'Efectivo', '2026-11-03', '', 'Lucía'],
-      ['Luis Paredes Ccama', 'B', '1-2', '900111003', '1000', 'Yape', '2026-11-05', car.id, 'Miguel'],
-      ['Elena Vargas Ruiz', 'C', '7', '900111004', '300', 'Efectivo', '2026-11-08', '', 'Lucía'],
-      ['Jorge Salas Quispe', 'C', '8', '900111005', '400', 'Yape', '2026-11-10', ana.id, 'Miguel']
+      ['Pedro Ramírez Soto', 'A', '3', '900111001', '500', 'Yape', '2026-11-02', ana.id, mig.id],
+      ['Luis Paredes Ccama', 'B', '1-2', '900111003', '1000', 'Yape', '2026-11-05', car.id, mig.id],
+      ['Jorge Salas Quispe', 'C', '8', '900111005', '400', 'Yape', '2026-11-10', ana.id, mig.id],
+      ['María Flores León', 'A', '4', '900111002', '800', 'Efectivo', '2026-11-03', '', luc.id],
+      ['Elena Vargas Ruiz', 'C', '7', '900111004', '300', 'Efectivo', '2026-11-08', '', luc.id]
     ].map(function (r) {
-      return { id: uid(), cliente: r[0], manzana: r[1], lotes: r[2], celular: r[3], adelanto: r[4], opcion: r[5], fecha: r[6], recibidoPor: r[7], boletero: r[8] };
+      return { id: uid(), cliente: r[0], manzana: r[1], lotes: r[2], celular: r[3], adelanto: r[4], opcion: r[5], fecha: r[6], recibidoPor: r[7], boleteroId: r[8] };
     });
     var mov = nuevoGasto('Movilidad', 'fijo'); mov.monto = '120';
     var per = nuevoGasto('Personal', 'personal'); per.precioUnit = '50'; per.cantidad = '3';
@@ -96,14 +102,8 @@
       id: String(l.id || base.id), nombre: String(l.nombre || base.nombre), lugar: String(l.lugar || ''),
       creado: +l.creado || base.creado, actualizado: +l.actualizado || base.actualizado,
       autoYape: !!l.autoYape,
-      separaciones: Array.isArray(l.separaciones) ? l.separaciones.map(function (s) {
-        var n = nuevaSep();
-        Object.keys(n).forEach(function (k) { if (s && s[k] != null) n[k] = String(s[k]); });
-        if (n.opcion !== 'Yape' && n.opcion !== 'Efectivo') n.opcion = '';
-        n.adelanto = limpiarMonto(n.adelanto);
-        n.celular = partirCel(n.celular).join(' / ');
-        return n;
-      }) : [],
+      boleteros: [],
+      separaciones: [],
       gastos: Array.isArray(l.gastos) ? l.gastos.map(function (g) {
         var n = nuevoGasto();
         Object.keys(n).forEach(function (k) { if (g && g[k] != null) n[k] = String(g[k]); });
@@ -120,7 +120,45 @@
         return n;
       }) : []
     };
+    normalizarBoleteros(l, out);
     return out;
+  }
+
+  /** Arma out.boleteros y out.separaciones (cada separación pertenece a un boletero). */
+  function normalizarBoleteros(l, out) {
+    var bols = Array.isArray(l.boleteros) ? l.boleteros.filter(Boolean).map(function (b) {
+      return { id: String(b.id || uid()), nombre: String(b.nombre || '') };
+    }) : [];
+    var ids = {}, porClave = {}, sinNombre = null;
+    bols.forEach(function (b) {
+      ids[b.id] = b;
+      var k = C.claveNombre(b.nombre);
+      if (k && !porClave[k]) porClave[k] = b;
+    });
+    var agregar = function (nombre) { var b = nuevoBoletero(nombre); bols.push(b); ids[b.id] = b; return b; };
+    out.separaciones = (Array.isArray(l.separaciones) ? l.separaciones : []).map(function (s) {
+      var n = nuevaSep();
+      Object.keys(n).forEach(function (k) { if (s && s[k] != null) n[k] = String(s[k]); });
+      if (n.opcion !== 'Yape' && n.opcion !== 'Efectivo') n.opcion = '';
+      n.adelanto = limpiarMonto(n.adelanto);
+      n.celular = partirCel(n.celular).join(' / ');
+      if (!ids[n.boleteroId]) {
+        // datos antiguos (columna de texto "boletero") o importados de Excel
+        var texto = String((s && s.boletero) || '').replace(/\s+/g, ' ').trim(), k = C.claveNombre(texto);
+        if (k) {
+          if (!porClave[k]) porClave[k] = agregar(texto);
+          n.boleteroId = porClave[k].id;
+        } else {
+          if (!sinNombre) {
+            sinNombre = bols.filter(function (b) { return !b.nombre.trim(); })[0] || agregar('');
+          }
+          n.boleteroId = sinNombre.id;
+        }
+      }
+      return n;
+    });
+    if (!bols.length) bols.push(nuevoBoletero(''));
+    out.boleteros = bols;
   }
 
   function cur() { return db.items[db.activeId]; }
@@ -221,29 +259,59 @@
     return h + '</div>';
   }
 
+  function filaSep(s, i) {
+    var a = function (f) { return attrs('separaciones', s.id, f); };
+    return '<tr>' +
+      '<td class="c-n">' + (i + 1) + '</td>' +
+      '<td><input class="in" type="text" autocomplete="off" placeholder="Nombre del cliente" value="' + esc(s.cliente) + '"' + a('cliente') + '></td>' +
+      '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.manzana) + '"' + a('manzana') + '></td>' +
+      '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.lotes) + '"' + a('lotes') + '></td>' +
+      '<td>' + celularesHTML(s) + '</td>' +
+      '<td><input class="in money" type="text" inputmode="decimal" placeholder="0.00" value="' + esc(s.adelanto) + '"' + a('adelanto') + ' data-kind="money"></td>' +
+      '<td><select class="in"' + a('opcion') + '>' +
+        '<option value=""' + (s.opcion === '' ? ' selected' : '') + '>—</option>' +
+        '<option value="Yape"' + (s.opcion === 'Yape' ? ' selected' : '') + '>Yape</option>' +
+        '<option value="Efectivo"' + (s.opcion === 'Efectivo' ? ' selected' : '') + '>Efectivo</option>' +
+      '</select></td>' +
+      '<td><input class="in" type="date" value="' + esc(s.fecha) + '"' + a('fecha') + '></td>' +
+      '<td class="col-recibido"><select class="in"' + a('recibidoPor') + (s.opcion === 'Yape' ? '' : ' disabled') + '>' + opcionesSocios(s.recibidoPor) + '</select></td>' +
+      '<td class="c-del no-print"><button type="button" class="btn-del" data-del="separaciones" data-id="' + esc(s.id) + '" aria-label="Eliminar separación ' + (i + 1) + '">×</button></td>' +
+      '</tr>';
+  }
+
+  var CABECERA_SEP = '<thead><tr><th class="c-n">N°</th><th>Cliente</th><th>Manzana</th><th>Lotes</th><th>N° celular</th>' +
+    '<th class="num">Adelanto (S/)</th><th>Opción</th><th>Día de firma</th><th class="col-recibido">Recibido por (socio)</th>' +
+    '<th class="c-del no-print"><span class="sr-only">Eliminar</span></th></tr></thead>';
+
+  /** Lista de separaciones agrupada: un bloque por boletero con sus separaciones y su subtotal. */
   function renderSep() {
     var l = cur();
-    $('tblSep').classList.toggle('with-recibido', !!l.autoYape);
-    $('sepBody').innerHTML = l.separaciones.map(function (s, i) {
-      var a = function (f) { return attrs('separaciones', s.id, f); };
-      return '<tr>' +
-        '<td class="c-n">' + (i + 1) + '</td>' +
-        '<td><input class="in" type="text" autocomplete="off" placeholder="Nombre del cliente" value="' + esc(s.cliente) + '"' + a('cliente') + '></td>' +
-        '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.manzana) + '"' + a('manzana') + '></td>' +
-        '<td><input class="in" type="text" autocomplete="off" value="' + esc(s.lotes) + '"' + a('lotes') + '></td>' +
-        '<td>' + celularesHTML(s) + '</td>' +
-        '<td><input class="in money" type="text" inputmode="decimal" placeholder="0.00" value="' + esc(s.adelanto) + '"' + a('adelanto') + ' data-kind="money"></td>' +
-        '<td><select class="in"' + a('opcion') + '>' +
-          '<option value=""' + (s.opcion === '' ? ' selected' : '') + '>—</option>' +
-          '<option value="Yape"' + (s.opcion === 'Yape' ? ' selected' : '') + '>Yape</option>' +
-          '<option value="Efectivo"' + (s.opcion === 'Efectivo' ? ' selected' : '') + '>Efectivo</option>' +
-        '</select></td>' +
-        '<td><input class="in" type="date" value="' + esc(s.fecha) + '"' + a('fecha') + '></td>' +
-        '<td><input class="in" type="text" autocomplete="off" list="dlBoleteros" placeholder="¿Quién separó?" value="' + esc(s.boletero) + '"' + a('boletero') + '></td>' +
-        '<td class="col-recibido"><select class="in"' + a('recibidoPor') + (s.opcion === 'Yape' ? '' : ' disabled') + '>' + opcionesSocios(s.recibidoPor) + '</select></td>' +
-        '<td class="c-del no-print"><button type="button" class="btn-del" data-del="separaciones" data-id="' + esc(s.id) + '" aria-label="Eliminar separación ' + (i + 1) + '">×</button></td>' +
-        '</tr>';
-    }).join('');
+    var box = $('sepGroups');
+    box.classList.toggle('with-recibido', !!l.autoYape);
+    var porBol = {};
+    l.boleteros.forEach(function (b) { porBol[b.id] = []; });
+    l.separaciones.forEach(function (s) { if (porBol[s.boleteroId]) porBol[s.boleteroId].push(s); });
+    box.innerHTML = l.boleteros.map(function (b, bi) {
+      var seps = porBol[b.id];
+      var bid = esc(b.id);
+      return '<div class="bol-group" data-bol="' + bid + '">' +
+        '<div class="bol-head">' +
+          '<label class="bol-tag" for="bol_' + bid + '">Boletero / personal ' + (bi + 1) + '</label>' +
+          '<input id="bol_' + bid + '" class="in in-bol" type="text" autocomplete="off" placeholder="Nombre del boletero" value="' + esc(b.nombre) + '" data-bolname="' + bid + '">' +
+          '<button type="button" class="btn-del no-print" data-delbol="' + bid + '" aria-label="Eliminar boletero ' + (bi + 1) + '">×</button>' +
+        '</div>' +
+        '<div class="table-scroll"><table class="grid sep-table">' + CABECERA_SEP + '<tbody>' +
+          seps.map(filaSep).join('') +
+        '</tbody></table></div>' +
+        (seps.length ? '' : '<p class="hint" style="margin:8px 0 0">Sin separaciones todavía.</p>') +
+        '<button type="button" class="btn btn-add no-print" data-addsep="' + bid + '">+ Agregar separación</button>' +
+        '<div class="sub-line">' +
+          '<div><span>Yape</span><strong data-sub="yape" data-bolid="' + bid + '"></strong></div>' +
+          '<div><span>Efectivo</span><strong data-sub="efectivo" data-bolid="' + bid + '"></strong></div>' +
+          '<div class="sub-tot"><span>Subtotal</span><strong data-sub="total" data-bolid="' + bid + '"></strong></div>' +
+        '</div>' +
+      '</div>';
+    }).join('') || '<p class="hint">Agrega un boletero para anotar sus separaciones.</p>';
   }
 
   function renderGas() {
@@ -300,7 +368,6 @@
   function actualizar() {
     var l = cur();
     var r = C.calcular(l);
-    setMoney($('totAdelantos'), r.totalAdelantos);
     setMoney($('totGastos'), r.totalGastos);
     setMoney($('sumAdel'), r.totalAdelantos);
     setMoney($('sumGas'), r.totalGastos);
@@ -340,41 +407,25 @@
         '</tr>';
     }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px">Agrega socios para ver la distribución.</td></tr>';
 
-    renderBoleteros(l, r);
+    renderGeneral(r);
     document.title = 'LOTI-CUENTAS · ' + l.nombre;
   }
 
-  function renderBoleteros(l, r) {
-    // sugerencias de nombres ya usados
-    var nombres = r.boleteros.filter(function (g) { return g.clave; }).map(function (g) { return g.nombre; });
-    $('dlBoleteros').innerHTML = nombres.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
-
-    var S = C.soles, tot = { n: 0, yape: 0, efectivo: 0, total: 0 };
-    $('bolBody').innerHTML = r.boleteros.length ? r.boleteros.map(function (g) {
-      tot.n += g.n; tot.yape += g.yape; tot.efectivo += g.efectivo; tot.total += g.total;
-      return '<tr><td' + (g.clave ? '' : ' class="muted"') + '>' + esc(g.nombre) + '</td><td class="num calc strong">' + S(g.total) + '</td>' +
-        '<td class="num">' + g.n + '</td><td class="num">' + S(g.yape) + '</td><td class="num">' + S(g.efectivo) + '</td></tr>';
-    }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px">Aún no hay separaciones.</td></tr>';
-    $('bolFoot').innerHTML = r.boleteros.length ? '<tr><td class="tot-label">TOTAL</td><td class="num calc strong">' + S(tot.total) + '</td><td class="num strong">' + tot.n +
-      '</td><td class="num strong">' + S(tot.yape) + '</td><td class="num strong">' + S(tot.efectivo) + '</td></tr>' : '';
-
-    // detalle: la misma lista de separaciones, separada por boletero
-    var abiertos = {};
-    document.querySelectorAll('#bolDetalle details[open]').forEach(function (d) { abiertos[d.dataset.clave] = true; });
-    $('bolDetalle').innerHTML = r.boleteros.map(function (g) {
-      var filas = g.indices.map(function (i, j) {
-        var s = l.separaciones[i];
-        return '<tr><td class="c-n">' + (j + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
-          '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td><td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td>' +
-          '<td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td></tr>';
-      }).join('');
-      return '<details data-clave="' + esc(g.clave) + '"' + (abiertos[g.clave] ? ' open' : '') + '>' +
-        '<summary><span class="bol-name">' + esc(g.nombre) + '</span><span class="bol-sum">' + g.n + ' sep. · <strong>' + S(g.total) + '</strong></span></summary>' +
-        '<div class="table-scroll"><table class="grid ro"><thead><tr><th class="c-n">N°</th><th>Cliente</th><th>Manzana</th><th>Lotes</th><th>N° celular</th>' +
-        '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th></tr></thead><tbody>' + filas + '</tbody>' +
-        '<tfoot><tr><td colspan="5" class="tot-label">TOTAL ' + esc(g.nombre.toUpperCase()) + '</td><td class="num calc strong">' + S(g.total) + '</td><td colspan="2"></td></tr></tfoot>' +
-        '</table></div></details>';
+  function renderGeneral(r) {
+    var S = C.soles, map = {};
+    r.boleteros.forEach(function (g) { map[g.id] = g; });
+    document.querySelectorAll('#sepGroups [data-sub]').forEach(function (el) {
+      var g = map[el.dataset.bolid];
+      setMoney(el, g ? g[el.dataset.sub] : 0);
+    });
+    var tot = { yape: 0, efectivo: 0, total: 0 };
+    $('genBody').innerHTML = r.boleteros.map(function (g) {
+      tot.yape += g.yape; tot.efectivo += g.efectivo; tot.total += g.total;
+      return '<tr><td' + (g.sinNombre ? ' class="muted"' : '') + '>' + esc(g.nombre) + '</td><td class="num">' + S(g.yape) + '</td>' +
+        '<td class="num">' + S(g.efectivo) + '</td><td class="num calc strong">' + S(g.total) + '</td></tr>';
     }).join('');
+    $('genFoot').innerHTML = '<tr><td class="tot-label">TOTAL GENERAL</td><td class="num strong">' + S(tot.yape) + '</td><td class="num strong">' +
+      S(tot.efectivo) + '</td><td class="num calc strong">' + S(r.totalAdelantos) + '</td></tr>';
   }
 
   function renderTodo() {
@@ -396,6 +447,11 @@
   document.addEventListener('input', function (e) {
     var el = e.target;
     if (el.id === 'lugar') { cur().lugar = el.value; guardar(); actualizar(); return; }
+    if (el.dataset && el.dataset.bolname) {
+      var bo = buscar('boleteros', el.dataset.bolname);
+      if (bo) { bo.nombre = el.value; guardar(); actualizar(); }
+      return;
+    }
     if (el.dataset && el.dataset.cel) {
       var sp = buscar('separaciones', el.dataset.cel);
       if (!sp) return;
@@ -468,7 +524,7 @@
 
   function refrescarSelectSocios() {
     var l = cur();
-    document.querySelectorAll('#sepBody select[data-field="recibidoPor"]').forEach(function (sel) {
+    document.querySelectorAll('#sepGroups select[data-field="recibidoPor"]').forEach(function (sel) {
       var s = buscar('separaciones', sel.dataset.id);
       if (s) sel.innerHTML = opcionesSocios(s.recibidoPor);
     });
@@ -476,7 +532,7 @@
   }
 
   function filaVacia(list, it) {
-    if (list === 'separaciones') return !(it.cliente || it.manzana || it.lotes || it.celular || it.adelanto || it.fecha || it.boletero);
+    if (list === 'separaciones') return !(it.cliente || it.manzana || it.lotes || it.celular || it.adelanto || it.fecha);
     if (list === 'gastos') return !(it.concepto || it.monto || it.precioUnit || it.cantidad);
     return !(it.nombre || it.yape);
   }
@@ -500,6 +556,27 @@
       actualizar();
       return;
     }
+    if (btn.dataset.addsep) {
+      var bidA = btn.dataset.addsep;
+      cur().separaciones.push(nuevaSep(bidA));
+      guardar(); renderSep(); actualizar();
+      var ultima = document.querySelector('.bol-group[data-bol="' + CSS.escape(bidA) + '"] tbody tr:last-child input[type="text"]');
+      if (ultima) { ultima.focus(); ultima.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+      return;
+    }
+    if (btn.dataset.delbol) {
+      var bidD = btn.dataset.delbol, bol = buscar('boleteros', bidD);
+      if (!bol) return;
+      var suyas = cur().separaciones.filter(function (x) { return x.boleteroId === bidD; });
+      var conDatos = suyas.filter(function (x) { return !filaVacia('separaciones', x); }).length;
+      var nom = bol.nombre.trim() || 'este boletero';
+      if ((conDatos || bol.nombre.trim()) &&
+          !confirm('¿Eliminar a ' + nom + (conDatos ? ' y sus ' + conDatos + ' separación(es)' : '') + '?\n\nEsto cambia el total de adelantos.')) return;
+      cur().boleteros = cur().boleteros.filter(function (x) { return x.id !== bidD; });
+      cur().separaciones = cur().separaciones.filter(function (x) { return x.boleteroId !== bidD; });
+      guardar(); renderSep(); actualizar();
+      return;
+    }
     if (btn.dataset.addcel) {
       var box = btn.closest('.cel-list');
       var cuantos = box.querySelectorAll('input').length;
@@ -517,7 +594,14 @@
     }
 
     switch (btn.dataset.action) {
-      case 'addSep': cur().separaciones.push(nuevaSep()); guardar(); renderSep(); actualizar(); enfocarUltima('sepBody'); break;
+      case 'addBol':
+        var nb = nuevoBoletero('');
+        cur().boleteros.push(nb);
+        cur().separaciones.push(nuevaSep(nb.id));
+        guardar(); renderSep(); actualizar();
+        var inb = document.querySelector('[data-bolname="' + CSS.escape(nb.id) + '"]');
+        if (inb) { inb.focus(); inb.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        break;
       case 'addGas': cur().gastos.push(nuevoGasto()); guardar(); renderGas(); actualizar(); enfocarUltima('gasBody'); break;
       case 'addSoc': cur().socios.push(nuevoSocio()); guardar(); renderSoc(); renderSep(); actualizar(); enfocarUltima('socBody'); break;
       case 'nueva': accionNueva(); break;
@@ -617,47 +701,35 @@
     if (!l.socios.length) h += '<tr><td colspan="3">Sin socios registrados.</td></tr>';
     h += '</tbody></table></section>';
 
-    // Separaciones
-    var conRec = !!l.autoYape;
-    h += '<section><h2>2. Lista de separaciones</h2><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
-      '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th><th>Boletero</th>' + (conRec ? '<th>Recibido por</th>' : '') + '</tr></thead><tbody>';
-    l.separaciones.forEach(function (s, i) {
-      h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
-        '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td>' +
-        '<td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td><td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td>' +
-        '<td>' + esc(s.boletero) + '</td>' +
-        (conRec ? '<td>' + (s.opcion === 'Yape' ? esc(nombreSocio[s.recibidoPor] || '') : '') + '</td>' : '') + '</tr>';
+    // Separaciones agrupadas por boletero
+    var conRec = !!l.autoYape, resto = conRec ? 3 : 2;
+    h += '<section><h2>2. Lista de separaciones por boletero</h2>';
+    var gruposImp = r.boleteros.filter(function (g) { return g.n > 0 || !g.sinNombre; });
+    gruposImp.forEach(function (g) {
+      var filas = g.indices.filter(function (i) { return C.sepConDatos(l.separaciones[i]); });
+      h += '<div class="pd-grupo"><h3>Boletero: ' + esc(g.nombre) + '</h3><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
+        '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th>' + (conRec ? '<th>Recibido por</th>' : '') + '</tr></thead><tbody>';
+      filas.forEach(function (i, j) {
+        var s = l.separaciones[i];
+        h += '<tr><td class="n">' + (j + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
+          '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td><td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td>' +
+          '<td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td>' +
+          (conRec ? '<td>' + (s.opcion === 'Yape' ? esc(nombreSocio[s.recibidoPor] || '') : '') + '</td>' : '') + '</tr>';
+      });
+      if (!filas.length) h += '<tr><td colspan="' + (6 + resto) + '">Sin separaciones.</td></tr>';
+      h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num"><span class="pd-subdet">Yape: ' + S(g.yape) + ' &nbsp;·&nbsp; Efectivo: ' + S(g.efectivo) +
+        '</span> &nbsp; SUBTOTAL ' + esc(g.nombre.toUpperCase()) + '</td><td class="num">' + S(g.total) + '</td><td colspan="' + resto + '"></td></tr></tfoot></table></div>';
     });
-    h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num">TOTAL ADELANTOS</td><td class="num">' + S(r.totalAdelantos) +
-      '</td><td colspan="' + (conRec ? 4 : 3) + '"></td></tr></tfoot></table></section>';
-
-    // Recaudado por boletero
-    if (r.boleteros.length) {
-      var tb = { n: 0, y: 0, e: 0, t: 0 };
-      h += '<section><h2>3. Recaudado por boletero</h2><table class="pd-bol"><thead><tr><th>Boletero / personal</th><th class="num">Separaciones</th>' +
-        '<th class="num">Yape</th><th class="num">Efectivo</th><th class="num">Total recaudado</th></tr></thead><tbody>';
-      r.boleteros.forEach(function (g) {
-        tb.n += g.n; tb.y += g.yape; tb.e += g.efectivo; tb.t += g.total;
-        h += '<tr><td>' + esc(g.nombre) + '</td><td class="num">' + g.n + '</td><td class="num">' + S(g.yape) + '</td><td class="num">' + S(g.efectivo) +
-          '</td><td class="num"><b>' + S(g.total) + '</b></td></tr>';
-      });
-      h += '</tbody><tfoot><tr class="tot"><td>TOTAL</td><td class="num">' + tb.n + '</td><td class="num">' + S(tb.y) + '</td><td class="num">' + S(tb.e) +
-        '</td><td class="num">' + S(tb.t) + '</td></tr></tfoot></table>';
-      r.boleteros.forEach(function (g) {
-        h += '<div class="pd-grupo"><h3>' + esc(g.nombre) + '</h3><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
-          '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th></tr></thead><tbody>';
-        g.indices.forEach(function (i, j) {
-          var s = l.separaciones[i];
-          h += '<tr><td class="n">' + (j + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
-            '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td><td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td>' +
-            '<td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td></tr>';
-        });
-        h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num">TOTAL ' + esc(g.nombre.toUpperCase()) + '</td><td class="num">' + S(g.total) +
-          '</td><td colspan="2"></td></tr></tfoot></table></div>';
-      });
-      h += '</section>';
-    }
-    var sec = r.boleteros.length ? 4 : 3;
+    var gy = 0, ge = 0;
+    h += '<div class="pd-grupo"><h3>Total general</h3><table class="pd-bol"><thead><tr><th>Boletero / personal</th><th class="num">Yape</th>' +
+      '<th class="num">Efectivo</th><th class="num">Subtotal</th></tr></thead><tbody>';
+    gruposImp.forEach(function (g) {
+      gy += g.yape; ge += g.efectivo;
+      h += '<tr><td>' + esc(g.nombre) + '</td><td class="num">' + S(g.yape) + '</td><td class="num">' + S(g.efectivo) + '</td><td class="num">' + S(g.total) + '</td></tr>';
+    });
+    h += '</tbody><tfoot><tr class="tot hl"><td>TOTAL ADELANTOS</td><td class="num">' + S(gy) + '</td><td class="num">' + S(ge) + '</td><td class="num">' +
+      S(r.totalAdelantos) + '</td></tr></tfoot></table></div></section>';
+    var sec = 3;
 
     // Gastos
     h += '<section><h2>' + sec + '. Gastos</h2><table><thead><tr><th class="n">N°</th><th>Concepto</th><th>Detalle</th><th class="num">Costo</th></tr></thead><tbody>';
@@ -713,10 +785,12 @@
     L.push('');
     L.push('Separaciones: ' + l.separaciones.filter(function (s) { return C.pos(s.adelanto) > 0; }).length);
     L.push('Total adelantos: ' + C.soles(r.totalAdelantos));
-    var bols = r.boleteros.filter(function (g) { return g.clave; });
+    var bols = r.boleteros.filter(function (g) { return g.n > 0; });
     if (bols.length) {
-      L.push('Recaudado por boletero:');
-      r.boleteros.forEach(function (g) { L.push('  • ' + g.nombre + ' (' + g.n + ' sep.): ' + C.soles(g.total)); });
+      L.push('Por boletero:');
+      bols.forEach(function (g) {
+        L.push('  • ' + g.nombre + ' (' + g.n + ' sep.): ' + C.soles(g.total) + ' (Yape ' + C.soles(g.yape) + ' · Efectivo ' + C.soles(g.efectivo) + ')');
+      });
     }
     L.push('Gastos: ' + C.soles(r.totalGastos));
     l.gastos.forEach(function (g, i) {

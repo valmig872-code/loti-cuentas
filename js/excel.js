@@ -73,15 +73,18 @@
       if (conRecibido) cab('J5', 'RECIBIDO POR');
       cab('K5', 'N°'); cab('L5', 'SOCIO'); cab('M5', 'YAPE');
       cab('O5', 'BOLETERO');
-      var grupos = window.Calc.porBoletero(lot);
-      var nombreGrupo = {};
-      grupos.forEach(function (g) { if (g.clave) nombreGrupo[g.clave] = g.nombre; });
+      var todosGrupos = window.Calc.porBoletero(lot);
+      var grupos = todosGrupos.filter(function (g) { return g.n > 0; });
+      var nombreBol = {};
+      todosGrupos.forEach(function (g) { nombreBol[g.id] = g.nombre; });
 
       var socios = lot.socios || [];
       var nombreSocio = {};
       socios.forEach(function (s, i) { nombreSocio[s.id] = s.nombre || ('Socio ' + (i + 1)); });
 
-      var seps = lot.separaciones && lot.separaciones.length ? lot.separaciones : [{}];
+      var orden = [];
+      todosGrupos.forEach(function (g) { g.indices.forEach(function (i) { orden.push(lot.separaciones[i]); }); });
+      var seps = orden.length ? orden : [{}];
       var s1 = 6, sN = 5 + seps.length;
       seps.forEach(function (s, i) {
         var r = s1 + i;
@@ -100,8 +103,7 @@
         celda('I' + r, f, FMT_FECHA, true);
         if (conRecibido) celda('J' + r, s.opcion === 'Yape' && nombreSocio[s.recibidoPor] ? nombreSocio[s.recibidoPor] : '');
         ws.getCell('H' + r).dataValidation = { type: 'list', allowBlank: true, formulae: ['"YAPE,EFECTIVO"'] };
-        var kb = window.Calc.claveNombre(s.boletero);
-        celda('O' + r, kb ? (nombreGrupo[kb] || String(s.boletero).trim()) : '');
+        celda('O' + r, s.id && window.Calc.sepConDatos(s) ? (nombreBol[s.boleteroId] || '') : '');
       });
       var totSep = sN + 1;
       cab('F' + totSep, 'TOTAL=');
@@ -205,11 +207,10 @@
         cab2('B3', 'N°'); cab2('C3', 'BOLETERO / PERSONAL'); cab2('D3', 'SEPARACIONES');
         cab2('E3', 'YAPE'); cab2('F3', 'EFECTIVO'); cab2('G3', 'TOTAL RECAUDADO');
         grupos.forEach(function (g, i) {
-          var r = 4 + i, crit = g.clave ? 'C' + r : '""';
+          var r = 4 + i, crit = 'C' + r;
           cel2('B' + r, i + 1, null, true);
-          cel2('C' + r, g.nombre).font = g.clave ? {} : { italic: true };
-          if (g.clave) cel2('D' + r, { formula: 'COUNTIF(' + rO + ',' + crit + ')', result: g.n }, '0', true);
-          else cel2('D' + r, g.n, '0', true);
+          cel2('C' + r, g.nombre);
+          cel2('D' + r, { formula: 'COUNTIF(' + rO + ',' + crit + ')', result: g.n }, '0', true);
           cel2('E' + r, { formula: 'SUMIFS(' + rG + ',' + rO + ',' + crit + ',' + rH + ',"YAPE")', result: g.yape }, FMT_SOLES);
           cel2('F' + r, { formula: 'SUMIFS(' + rG + ',' + rO + ',' + crit + ',' + rH + ',"EFECTIVO")', result: g.efectivo }, FMT_SOLES);
           cel2('G' + r, { formula: 'SUMIF(' + rO + ',' + crit + ',' + rG + ')', result: g.total }, FMT_SOLES).font = { bold: true };
@@ -231,7 +232,8 @@
           cab2('B' + fila, 'N°'); cab2('C' + fila, 'CLIENTE'); cab2('D' + fila, 'MANZANA'); cab2('E' + fila, 'LOTES');
           cab2('F' + fila, 'N° CELULAR'); cab2('G' + fila, 'ADELANTO'); cab2('H' + fila, 'OPCION'); cab2('I' + fila, 'DIA DE FIRMA');
           var desde = fila + 1;
-          g.indices.forEach(function (idx, j) {
+          var idxs = g.indices.filter(function (i) { return window.Calc.sepConDatos(lot.separaciones[i]); });
+          idxs.forEach(function (idx, j) {
             var sp = lot.separaciones[idx], r = desde + j, f = null;
             if (sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha)) { var p = sp.fecha.split('-'); f = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
             cel2('B' + r, j + 1, null, true);
@@ -243,7 +245,7 @@
             cel2('H' + r, sp.opcion ? sp.opcion.toUpperCase() : '', null, true);
             cel2('I' + r, f, FMT_FECHA, true);
           });
-          var hasta = desde + g.indices.length - 1, rtot = hasta + 1;
+          var hasta = desde + idxs.length - 1, rtot = hasta + 1;
           cab2('F' + rtot, 'TOTAL=');
           var ct = cel2('G' + rtot, { formula: 'SUM(G' + desde + ':G' + hasta + ')', result: g.total }, FMT_SOLES, true);
           ct.fill = AZUL; ct.font = { bold: true, color: { argb: 'FFFFFFFF' } };
