@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#002060">
+  <meta name="description" content="LOTI-CUENTAS: saca las cuentas de tus lotizaciones (separaciones, gastos y reparto entre socios) desde el celular.">
+  <title>LOTI-CUENTAS</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23002060'/%3E%3Cpath d='M14 46V18h6v22h12v6zM36 18h14v28H36z' fill='%23ffd400'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">LC</span>
+      <div>
+        <h1>LOTI-CUENTAS</h1>
+        <p class="sub">Cuentas de lotizaciones</p>
+      </div>
+      <span id="saveStatus" class="save-status" aria-live="polite"></span>
+    </div>
+    <div class="lot-picker">
+      <label for="selLot" class="sr-only">Lotización abierta</label>
+      <select id="selLot"></select>
+      <div class="lot-actions">
+        <button type="button" class="btn" data-action="nueva">+ Nueva</button>
+        <button type="button" class="btn" data-action="duplicar">Duplicar</button>
+        <button type="button" class="btn" data-action="renombrar">Renombrar</button>
+        <button type="button" class="btn btn-danger-ghost" data-action="borrar">Borrar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <p class="privacy-note">🔒 Tus datos se guardan solo en este dispositivo; haz respaldo en JSON.</p>
+
+    <h2 class="print-title" id="printTitle"></h2>
+
+    <!-- 1. Encabezado -->
+    <section class="card">
+      <label class="field-label" for="lugar">Lugar de lotización</label>
+      <input id="lugar" class="in in-lg" type="text" autocomplete="off" placeholder="Ej. Sector Las Flores">
+    </section>
+
+    <!-- 2. Separaciones -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Lista de separaciones</h2>
+        <label class="switch">
+          <input type="checkbox" id="autoYape">
+          <span class="slider" aria-hidden="true"></span>
+          <span class="switch-text">Registrar quién recibió el Yape</span>
+        </label>
+      </div>
+      <div class="table-scroll">
+        <table class="grid" id="tblSep">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th>Cliente</th>
+              <th>Manzana</th>
+              <th>Lotes</th>
+              <th>N° celular</th>
+              <th class="num">Adelanto (S/)</th>
+              <th>Opción</th>
+              <th>Día de firma</th>
+              <th class="col-recibido">Recibido por (socio)</th>
+              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
+            </tr>
+          </thead>
+          <tbody id="sepBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" class="tot-label">TOTAL adelantos</td>
+              <td class="num calc strong" id="totAdelantos"></td>
+              <td colspan="4" class="tfoot-fill"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="sum-line"><span>Total adelantos</span><strong id="sumAdel"></strong></div>
+      <p class="warn" id="warnYape" hidden></p>
+      <button type="button" class="btn btn-add no-print" data-action="addSep">+ Agregar separación</button>
+    </section>
+
+    <!-- 3. Gastos -->
+    <section class="card">
+      <div class="card-head"><h2>Gastos</h2></div>
+      <div class="table-scroll">
+        <table class="grid" id="tblGas">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th>Concepto</th>
+              <th>Tipo</th>
+              <th>Detalle</th>
+              <th class="num">Costo</th>
+              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
+            </tr>
+          </thead>
+          <tbody id="gasBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="tot-label">TOTAL gastos</td>
+              <td class="num calc strong" id="totGastos"></td>
+              <td class="tfoot-fill no-print"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="sum-line"><span>Total gastos</span><strong id="sumGas"></strong></div>
+      <button type="button" class="btn btn-add no-print" data-action="addGas">+ Agregar gasto</button>
+    </section>
+
+    <!-- 4. Socios -->
+    <section class="card">
+      <div class="card-head"><h2>Socios</h2></div>
+      <p class="hint" id="hintSocios"></p>
+      <div class="table-scroll">
+        <table class="grid" id="tblSoc">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th>Socio</th>
+              <th class="num">Yape recibido (S/)</th>
+              <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
+            </tr>
+          </thead>
+          <tbody id="socBody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-add no-print" data-action="addSoc">+ Agregar socio</button>
+    </section>
+
+    <!-- 5. Resultado -->
+    <section class="card">
+      <div class="card-head"><h2>Resultado</h2></div>
+      <div class="stats">
+        <div class="stat"><span>Total adelantos</span><strong id="stAdel"></strong></div>
+        <div class="stat"><span>Total gastos</span><strong id="stGas"></strong></div>
+        <div class="stat stat-main"><span>Monto total recaudado</span><strong id="stRec"></strong></div>
+        <div class="stat stat-main"><span>Monto para cada socio</span><strong id="stSoc"></strong><small id="stSocNote"></small></div>
+      </div>
+    </section>
+
+    <!-- 6. Distribución -->
+    <section class="card">
+      <div class="card-head"><h2>Distribución de ganancias</h2></div>
+      <div class="table-scroll">
+        <table class="grid" id="tblDist">
+          <thead>
+            <tr>
+              <th class="c-n">N°</th>
+              <th>Socio</th>
+              <th class="num">Descuento (Yape)</th>
+              <th class="num">Monto final</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="distBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7. Exportar -->
+    <section class="card no-print">
+      <div class="card-head"><h2>Exportar y respaldo</h2></div>
+      <div class="actions-grid">
+        <button type="button" class="btn btn-primary" data-action="whatsapp">Copiar resumen para WhatsApp</button>
+        <button type="button" class="btn" data-action="compartir" id="btnShare" hidden>Compartir resumen…</button>
+        <button type="button" class="btn" data-action="excel">Exportar a Excel (.xlsx)</button>
+        <button type="button" class="btn" data-action="pdf">Imprimir / guardar PDF</button>
+        <button type="button" class="btn" data-action="importExcel">Importar Excel antiguo</button>
+        <button type="button" class="btn" data-action="backup">Descargar respaldo (JSON)</button>
+        <button type="button" class="btn" data-action="restore">Importar respaldo (JSON)</button>
+      </div>
+      <p class="hint">Los archivos se procesan solo en tu navegador; no se suben a ningún servidor.</p>
+      <input type="file" id="fileExcel" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+      <input type="file" id="fileJson" accept=".json,application/json" hidden>
+    </section>
+
+    <footer class="foot no-print">LOTI-CUENTAS · Los datos viven solo en este navegador.</footer>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/calc.js"></script>
+  <script src="js/excel.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
