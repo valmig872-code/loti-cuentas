@@ -615,6 +615,8 @@
       case 'importExcel': $('fileExcel').click(); break;
       case 'backup': descargarRespaldo(); break;
       case 'restore': $('fileJson').click(); break;
+      case 'instalar': instalarApp(); break;
+      case 'cerrarInstalar': ocultarAvisoInstalar(true); break;
     }
   });
 
@@ -903,6 +905,61 @@
       });
   }
 
+  /* ================= App instalable (PWA) ================= */
+  var promptInstalar = null;
+  var KEY_AVISO = 'loticuentas.avisoInstalar';
+  function enModoApp() {
+    return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  }
+  function avisoOculto() { try { return localStorage.getItem(KEY_AVISO) === 'oculto'; } catch (e) { return false; } }
+  function ocultarAvisoInstalar(recordar) {
+    $('installBanner').hidden = true;
+    if (recordar) { try { localStorage.setItem(KEY_AVISO, 'oculto'); } catch (e) { /* sin guardado */ } }
+  }
+  function mostrarOpcionesInstalar() {
+    if (enModoApp()) { $('installBanner').hidden = true; $('btnInstalar2').hidden = true; return; }
+    var ua = navigator.userAgent || '';
+    var esIOS = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (promptInstalar) {
+      $('btnInstalar2').hidden = false;
+      $('installBanner').classList.remove('ios');
+      $('installHint').textContent = 'Ábrela desde tu pantalla de inicio o escritorio y úsala sin internet.';
+      if (!avisoOculto()) $('installBanner').hidden = false;
+    } else if (esIOS) {
+      $('installBanner').classList.add('ios');
+      $('installHint').textContent = 'En Safari toca Compartir (□↑) y luego "Agregar a pantalla de inicio".';
+      if (!avisoOculto()) $('installBanner').hidden = false;
+    }
+  }
+  function instalarApp() {
+    if (!promptInstalar) {
+      toast('Usa el menú del navegador: "Instalar app" o "Agregar a pantalla de inicio".');
+      return;
+    }
+    promptInstalar.prompt();
+    promptInstalar.userChoice.then(function (r) {
+      if (r && r.outcome === 'accepted') toast('¡Listo! LOTI-CUENTAS quedó instalada');
+      promptInstalar = null;
+      $('btnInstalar2').hidden = true;
+      ocultarAvisoInstalar(false);
+    });
+  }
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    promptInstalar = e;
+    mostrarOpcionesInstalar();
+  });
+  window.addEventListener('appinstalled', function () {
+    promptInstalar = null;
+    ocultarAvisoInstalar(false);
+    $('btnInstalar2').hidden = true;
+  });
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) { console.warn('Sin modo sin conexión:', err); });
+    });
+  }
+
   /* ================= Inicio ================= */
   // Guardar de inmediato si el usuario cambia de app o cierra la pestaña
   var flush = function () { if (pendiente) guardar(true); };
@@ -911,6 +968,7 @@
 
   cargar();
   if (navigator.share) $('btnShare').hidden = false;
+  mostrarOpcionesInstalar();
   renderTodo();
   if (!storageOk) estadoGuardado('⚠ Este navegador no permite guardar', true);
   else guardar(true);

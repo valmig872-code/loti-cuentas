@@ -14,6 +14,7 @@
     cargando = new Promise(function (resolve, reject) {
       var s = document.createElement('script');
       s.src = EXCELJS_URL;
+      s.crossOrigin = "anonymous";
       s.async = true;
       s.onload = function () { window.ExcelJS ? resolve(window.ExcelJS) : reject(new Error('ExcelJS no disponible')); };
       s.onerror = function () { cargando = null; reject(new Error('No se pudo cargar ExcelJS')); };

@@ -25,6 +25,16 @@ Replica la hoja de cálculo de cuentas de lotización:
 - Filas sin límite: agrega o elimina separaciones, gastos y socios.
 - Varias lotizaciones con nombre: abrir, duplicar, renombrar y borrar.
 
+## Instalar como app (celular o computadora)
+
+LOTI-CUENTAS es una app instalable (PWA): queda con su ícono, se abre a pantalla completa y **funciona sin internet** (incluidos PDF y Excel).
+
+- **Android (Chrome):** abre el sitio → toca **Instalar** en el aviso, o menú ⋮ → **Instalar app**.
+- **iPhone / iPad (Safari):** botón **Compartir** (□↑) → **Agregar a pantalla de inicio**.
+- **Computadora (Chrome o Edge):** ícono de instalar en la barra de direcciones, o el botón **📲 Instalar como app** en "Exportar y respaldo". Queda en el menú Inicio / escritorio.
+
+La app instalada usa los mismos datos que el sitio en ese navegador. Cuando se publica una mejora, la app la descarga sola en segundo plano y la muestra la próxima vez que la abras.
+
 ## Cómo se usa
 
 1. Abre el sitio en el celular (puedes "Agregar a pantalla de inicio" desde el menú del navegador).
@@ -61,7 +71,11 @@ css/styles.css    estilos (móvil primero + impresión)
 js/calc.js        fórmulas (equivalentes a las del Excel)
 js/excel.js       exportar / importar .xlsx (ExcelJS 4.4.0 desde jsDelivr)
 js/app.js         interfaz, guardado local, respaldo y resumen
+sw.js             modo sin conexión (service worker)
+manifest.webmanifest + icons/   datos e íconos de la app instalable
 ```
+
+Si cambias la lista de archivos de la app, agrégalos también a `ARCHIVOS` en `sw.js`.
 
 No hay paso de compilación: es HTML, CSS y JavaScript puro. Para probar en tu PC: `python -m http.server 8000` dentro de la carpeta y abre http://localhost:8000.
 
