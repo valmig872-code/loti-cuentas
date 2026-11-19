@@ -20,6 +20,8 @@ Replica la hoja de cálculo de cuentas de lotización:
 
 - Monto final negativo → en rojo, **"debe devolver"**. Positivo → **"se le debe pagar"**.
 - Interruptor opcional **"Registrar quién recibió el Yape"**: agrega la columna *Recibido por (socio)* y calcula solo el Yape de cada socio (se puede sobrescribir a mano; ↺ vuelve al automático).
+- **Recaudado por boletero**: en cada separación anota qué boletero o personal la hizo. La app suma lo que recaudó cada uno (total, Yape y efectivo) y muestra su lista de lotes por separado.
+- Hasta 3 números de celular por separación.
 - Filas sin límite: agrega o elimina separaciones, gastos y socios.
 - Varias lotizaciones con nombre: abrir, duplicar, renombrar y borrar.
 
@@ -31,7 +33,7 @@ Replica la hoja de cálculo de cuentas de lotización:
 4. Abajo, en **Exportar y respaldo**:
    - **Copiar resumen para WhatsApp**: copia el texto listo para pegar.
    - **Exportar a Excel (.xlsx)**: genera la hoja con el mismo formato y fórmulas del formato original.
-   - **Imprimir / guardar PDF**: abre la impresión; elige "Guardar como PDF".
+   - **Imprimir / guardar PDF**: genera un documento formal en blanco y negro (título con el lugar, resultados resaltados); elige "Guardar como PDF".
    - **Importar Excel antiguo**: carga un archivo con la estructura del formato de cuentas (se procesa solo en tu navegador).
 
 ## Respaldo (importante)

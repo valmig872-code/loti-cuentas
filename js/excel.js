@@ -39,7 +39,7 @@
       var ws = wb.addWorksheet('Hoja1');
 
       [['A', 11.55], ['B', 5.89], ['C', 27.33], ['D', 11.89], ['E', 14], ['F', 13], ['G', 12], ['H', 11],
-       ['I', 14.22], ['J', 18], ['K', 6.89], ['L', 24], ['M', 13]].forEach(function (w) { ws.getColumn(w[0]).width = w[1]; });
+       ['I', 14.22], ['J', 18], ['K', 6.89], ['L', 24], ['M', 13], ['N', 3], ['O', 20]].forEach(function (w) { ws.getColumn(w[0]).width = w[1]; });
 
       function cab(ref, texto) {
         var c = ws.getCell(ref);
@@ -72,6 +72,10 @@
       cab('F5', 'N° CELULAR'); cab('G5', 'ADELANTO'); cab('H5', 'OPCION'); cab('I5', 'DIA DE FIRMA');
       if (conRecibido) cab('J5', 'RECIBIDO POR');
       cab('K5', 'N°'); cab('L5', 'SOCIO'); cab('M5', 'YAPE');
+      cab('O5', 'BOLETERO');
+      var grupos = window.Calc.porBoletero(lot);
+      var nombreGrupo = {};
+      grupos.forEach(function (g) { if (g.clave) nombreGrupo[g.clave] = g.nombre; });
 
       var socios = lot.socios || [];
       var nombreSocio = {};
@@ -96,6 +100,8 @@
         celda('I' + r, f, FMT_FECHA, true);
         if (conRecibido) celda('J' + r, s.opcion === 'Yape' && nombreSocio[s.recibidoPor] ? nombreSocio[s.recibidoPor] : '');
         ws.getCell('H' + r).dataValidation = { type: 'list', allowBlank: true, formulae: ['"YAPE,EFECTIVO"'] };
+        var kb = window.Calc.claveNombre(s.boletero);
+        celda('O' + r, kb ? (nombreGrupo[kb] || String(s.boletero).trim()) : '');
       });
       var totSep = sN + 1;
       cab('F' + totSep, 'TOTAL=');
@@ -169,6 +175,81 @@
           rules: [{ type: 'containsText', operator: 'containsText', text: 'DEBE DEVOLVER', priority: 1,
             style: { font: { color: { argb: 'FFC00000' }, bold: true } } }]
         });
+      }
+
+      /* 6. Hoja "Por boletero" */
+      if (grupos.length) {
+        var wb2 = wb.addWorksheet('Por boletero');
+        [['A', 3], ['B', 5.89], ['C', 27.33], ['D', 14], ['E', 13], ['F', 14], ['G', 14], ['H', 11], ['I', 14.22]]
+          .forEach(function (w) { wb2.getColumn(w[0]).width = w[1]; });
+        var cab2 = function (ref, texto) {
+          var c = wb2.getCell(ref);
+          c.value = texto; c.fill = AZUL; c.border = BORDE;
+          c.font = { name: 'Calibri', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+          c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        };
+        var cel2 = function (ref, v, fmt, centro) {
+          var c = wb2.getCell(ref);
+          c.value = v; c.border = BORDE;
+          if (fmt) c.numFmt = fmt;
+          if (centro) c.alignment = { horizontal: 'center' };
+          return c;
+        };
+        var t1 = wb2.getCell('C1');
+        t1.value = 'RECAUDADO POR BOLETERO'; t1.fill = AMARILLO; t1.font = { bold: true };
+        wb2.mergeCells('D1:G1');
+        wb2.getCell('D1').value = lot.lugar || '';
+        wb2.getCell('D1').font = { bold: true, size: 12 };
+
+        var rO = '\'Hoja1\'!$O$' + s1 + ':$O$' + sN, rG = '\'Hoja1\'!$G$' + s1 + ':$G$' + sN, rH = '\'Hoja1\'!$H$' + s1 + ':$H$' + sN;
+        cab2('B3', 'N°'); cab2('C3', 'BOLETERO / PERSONAL'); cab2('D3', 'SEPARACIONES');
+        cab2('E3', 'YAPE'); cab2('F3', 'EFECTIVO'); cab2('G3', 'TOTAL RECAUDADO');
+        grupos.forEach(function (g, i) {
+          var r = 4 + i, crit = g.clave ? 'C' + r : '""';
+          cel2('B' + r, i + 1, null, true);
+          cel2('C' + r, g.nombre).font = g.clave ? {} : { italic: true };
+          if (g.clave) cel2('D' + r, { formula: 'COUNTIF(' + rO + ',' + crit + ')', result: g.n }, '0', true);
+          else cel2('D' + r, g.n, '0', true);
+          cel2('E' + r, { formula: 'SUMIFS(' + rG + ',' + rO + ',' + crit + ',' + rH + ',"YAPE")', result: g.yape }, FMT_SOLES);
+          cel2('F' + r, { formula: 'SUMIFS(' + rG + ',' + rO + ',' + crit + ',' + rH + ',"EFECTIVO")', result: g.efectivo }, FMT_SOLES);
+          cel2('G' + r, { formula: 'SUMIF(' + rO + ',' + crit + ',' + rG + ')', result: g.total }, FMT_SOLES).font = { bold: true };
+        });
+        var rt = 4 + grupos.length, r1b = 4, rNb = rt - 1;
+        var sumG = grupos.reduce(function (a, g) { return { n: a.n + g.n, y: a.y + g.yape, e: a.e + g.efectivo, t: a.t + g.total }; }, { n: 0, y: 0, e: 0, t: 0 });
+        cab2('C' + rt, 'TOTAL=');
+        ['D', 'E', 'F', 'G'].forEach(function (col, k) {
+          var c = cel2(col + rt, { formula: 'SUM(' + col + r1b + ':' + col + rNb + ')', result: [sumG.n, sumG.y, sumG.e, sumG.t][k] }, k ? FMT_SOLES : '0', true);
+          c.fill = AZUL; c.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        });
+
+        // Detalle: la misma lista de separaciones, separada por boletero
+        var fila = rt + 3;
+        grupos.forEach(function (g) {
+          var tg = wb2.getCell('C' + fila);
+          tg.value = g.nombre.toUpperCase(); tg.font = { bold: true, size: 12 };
+          fila++;
+          cab2('B' + fila, 'N°'); cab2('C' + fila, 'CLIENTE'); cab2('D' + fila, 'MANZANA'); cab2('E' + fila, 'LOTES');
+          cab2('F' + fila, 'N° CELULAR'); cab2('G' + fila, 'ADELANTO'); cab2('H' + fila, 'OPCION'); cab2('I' + fila, 'DIA DE FIRMA');
+          var desde = fila + 1;
+          g.indices.forEach(function (idx, j) {
+            var sp = lot.separaciones[idx], r = desde + j, f = null;
+            if (sp.fecha && /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha)) { var p = sp.fecha.split('-'); f = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+            cel2('B' + r, j + 1, null, true);
+            cel2('C' + r, sp.cliente || '');
+            cel2('D' + r, sp.manzana || '', null, true);
+            cel2('E' + r, sp.lotes || '', null, true);
+            cel2('F' + r, sp.celular || '', null, true);
+            cel2('G' + r, vacio(sp.adelanto) ? null : n(sp.adelanto), FMT_SOLES);
+            cel2('H' + r, sp.opcion ? sp.opcion.toUpperCase() : '', null, true);
+            cel2('I' + r, f, FMT_FECHA, true);
+          });
+          var hasta = desde + g.indices.length - 1, rtot = hasta + 1;
+          cab2('F' + rtot, 'TOTAL=');
+          var ct = cel2('G' + rtot, { formula: 'SUM(G' + desde + ':G' + hasta + ')', result: g.total }, FMT_SOLES, true);
+          ct.fill = AZUL; ct.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          fila = rtot + 3;
+        });
+        wb2.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 9 };
       }
 
       ws.views = [{ showGridLines: true }];
@@ -278,6 +359,7 @@
         opcion: function (t) { return t.indexOf('OPCION') === 0; },
         fecha: function (t) { return t.indexOf('FIRMA') >= 0 || t.indexOf('FECHA') >= 0; },
         recibido: function (t) { return t.indexOf('RECIBIDO') === 0; },
+        boletero: function (t) { return t.indexOf('BOLETER') === 0 || t.indexOf('PERSONAL QUE SEPARO') === 0; },
         socio: function (t) { return t === 'SOCIO'; }
       });
       var c0 = ps.c;
@@ -301,6 +383,7 @@
         s.opcion = op.indexOf('YAPE') >= 0 ? 'Yape' : (op.indexOf('EFECT') >= 0 ? 'Efectivo' : '');
         s.fecha = fechaISO(valor(at(r, cs.fecha)));
         var rec = cs.recibido ? texto(at(r, cs.recibido)) : '';
+        s.boletero = cs.boletero ? texto(at(r, cs.boletero)) : '';
         if (!(s.cliente || s.manzana || s.lotes || s.celular || s.adelanto)) {
           // fila vacía: si hay varias seguidas, se terminó la tabla
           var siguienteVacia = !texto(at(r + 1, c0)) && !texto(at(r + 1, cs.adelanto));

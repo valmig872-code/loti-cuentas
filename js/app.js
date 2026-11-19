@@ -46,7 +46,7 @@
 
   /* ================= Modelo ================= */
   function nuevaSep() {
-    return { id: uid(), cliente: '', manzana: '', lotes: '', celular: '', adelanto: '', opcion: '', fecha: '', recibidoPor: '' };
+    return { id: uid(), cliente: '', manzana: '', lotes: '', celular: '', adelanto: '', opcion: '', fecha: '', recibidoPor: '', boletero: '' };
   }
   function nuevoGasto(concepto, tipo) {
     return { id: uid(), concepto: concepto || '', tipo: tipo || 'fijo', monto: '', precioUnit: '', cantidad: '' };
@@ -72,13 +72,13 @@
     var ana = nuevoSocio('Ana Torres'), car = nuevoSocio('Carlos Mendoza'), ros = nuevoSocio('Rosa Huamán');
     l.socios = [ana, car, ros];
     l.separaciones = [
-      ['Pedro Ramírez Soto', 'A', '3', '900 111 001', '500', 'Yape', '2026-11-02', ana.id],
-      ['María Flores León', 'A', '4', '900 111 002', '800', 'Efectivo', '2026-11-03', ''],
-      ['Luis Paredes Ccama', 'B', '1-2', '900 111 003', '1000', 'Yape', '2026-11-05', car.id],
-      ['Elena Vargas Ruiz', 'C', '7', '900 111 004', '300', 'Efectivo', '2026-11-08', ''],
-      ['Jorge Salas Quispe', 'C', '8', '900 111 005', '400', 'Yape', '2026-11-10', ana.id]
+      ['Pedro Ramírez Soto', 'A', '3', '900 111 001', '500', 'Yape', '2026-11-02', ana.id, 'Miguel'],
+      ['María Flores León', 'A', '4', '900 111 002', '800', 'Efectivo', '2026-11-03', '', 'Lucía'],
+      ['Luis Paredes Ccama', 'B', '1-2', '900 111 003', '1000', 'Yape', '2026-11-05', car.id, 'Miguel'],
+      ['Elena Vargas Ruiz', 'C', '7', '900 111 004', '300', 'Efectivo', '2026-11-08', '', 'Lucía'],
+      ['Jorge Salas Quispe', 'C', '8', '900 111 005', '400', 'Yape', '2026-11-10', ana.id, 'Miguel']
     ].map(function (r) {
-      return { id: uid(), cliente: r[0], manzana: r[1], lotes: r[2], celular: r[3], adelanto: r[4], opcion: r[5], fecha: r[6], recibidoPor: r[7] };
+      return { id: uid(), cliente: r[0], manzana: r[1], lotes: r[2], celular: r[3], adelanto: r[4], opcion: r[5], fecha: r[6], recibidoPor: r[7], boletero: r[8] };
     });
     var mov = nuevoGasto('Movilidad', 'fijo'); mov.monto = '120';
     var per = nuevoGasto('Personal', 'personal'); per.precioUnit = '50'; per.cantidad = '3';
@@ -233,6 +233,7 @@
           '<option value="Efectivo"' + (s.opcion === 'Efectivo' ? ' selected' : '') + '>Efectivo</option>' +
         '</select></td>' +
         '<td><input class="in" type="date" value="' + esc(s.fecha) + '"' + a('fecha') + '></td>' +
+        '<td><input class="in" type="text" autocomplete="off" list="dlBoleteros" placeholder="¿Quién separó?" value="' + esc(s.boletero) + '"' + a('boletero') + '></td>' +
         '<td class="col-recibido"><select class="in"' + a('recibidoPor') + (s.opcion === 'Yape' ? '' : ' disabled') + '>' + opcionesSocios(s.recibidoPor) + '</select></td>' +
         '<td class="c-del no-print"><button type="button" class="btn-del" data-del="separaciones" data-id="' + esc(s.id) + '" aria-label="Eliminar separación ' + (i + 1) + '">×</button></td>' +
         '</tr>';
@@ -333,7 +334,41 @@
         '</tr>';
     }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px">Agrega socios para ver la distribución.</td></tr>';
 
+    renderBoleteros(l, r);
     document.title = 'LOTI-CUENTAS · ' + l.nombre;
+  }
+
+  function renderBoleteros(l, r) {
+    // sugerencias de nombres ya usados
+    var nombres = r.boleteros.filter(function (g) { return g.clave; }).map(function (g) { return g.nombre; });
+    $('dlBoleteros').innerHTML = nombres.map(function (n) { return '<option value="' + esc(n) + '">'; }).join('');
+
+    var S = C.soles, tot = { n: 0, yape: 0, efectivo: 0, total: 0 };
+    $('bolBody').innerHTML = r.boleteros.length ? r.boleteros.map(function (g) {
+      tot.n += g.n; tot.yape += g.yape; tot.efectivo += g.efectivo; tot.total += g.total;
+      return '<tr><td' + (g.clave ? '' : ' class="muted"') + '>' + esc(g.nombre) + '</td><td class="num calc strong">' + S(g.total) + '</td>' +
+        '<td class="num">' + g.n + '</td><td class="num">' + S(g.yape) + '</td><td class="num">' + S(g.efectivo) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="hint" style="padding:12px">Aún no hay separaciones.</td></tr>';
+    $('bolFoot').innerHTML = r.boleteros.length ? '<tr><td class="tot-label">TOTAL</td><td class="num calc strong">' + S(tot.total) + '</td><td class="num strong">' + tot.n +
+      '</td><td class="num strong">' + S(tot.yape) + '</td><td class="num strong">' + S(tot.efectivo) + '</td></tr>' : '';
+
+    // detalle: la misma lista de separaciones, separada por boletero
+    var abiertos = {};
+    document.querySelectorAll('#bolDetalle details[open]').forEach(function (d) { abiertos[d.dataset.clave] = true; });
+    $('bolDetalle').innerHTML = r.boleteros.map(function (g) {
+      var filas = g.indices.map(function (i, j) {
+        var s = l.separaciones[i];
+        return '<tr><td class="c-n">' + (j + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
+          '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td><td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td>' +
+          '<td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td></tr>';
+      }).join('');
+      return '<details data-clave="' + esc(g.clave) + '"' + (abiertos[g.clave] ? ' open' : '') + '>' +
+        '<summary><span class="bol-name">' + esc(g.nombre) + '</span><span class="bol-sum">' + g.n + ' sep. · <strong>' + S(g.total) + '</strong></span></summary>' +
+        '<div class="table-scroll"><table class="grid ro"><thead><tr><th class="c-n">N°</th><th>Cliente</th><th>Manzana</th><th>Lotes</th><th>N° celular</th>' +
+        '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th></tr></thead><tbody>' + filas + '</tbody>' +
+        '<tfoot><tr><td colspan="5" class="tot-label">TOTAL ' + esc(g.nombre.toUpperCase()) + '</td><td class="num calc strong">' + S(g.total) + '</td><td colspan="2"></td></tr></tfoot>' +
+        '</table></div></details>';
+    }).join('');
   }
 
   function renderTodo() {
@@ -435,7 +470,7 @@
   }
 
   function filaVacia(list, it) {
-    if (list === 'separaciones') return !(it.cliente || it.manzana || it.lotes || it.celular || it.adelanto || it.fecha);
+    if (list === 'separaciones') return !(it.cliente || it.manzana || it.lotes || it.celular || it.adelanto || it.fecha || it.boletero);
     if (list === 'gastos') return !(it.concepto || it.monto || it.precioUnit || it.cantidad);
     return !(it.nombre || it.yape);
   }
@@ -579,18 +614,47 @@
     // Separaciones
     var conRec = !!l.autoYape;
     h += '<section><h2>2. Lista de separaciones</h2><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
-      '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th>' + (conRec ? '<th>Recibido por</th>' : '') + '</tr></thead><tbody>';
+      '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th><th>Boletero</th>' + (conRec ? '<th>Recibido por</th>' : '') + '</tr></thead><tbody>';
     l.separaciones.forEach(function (s, i) {
       h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
         '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td>' +
         '<td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td><td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td>' +
+        '<td>' + esc(s.boletero) + '</td>' +
         (conRec ? '<td>' + (s.opcion === 'Yape' ? esc(nombreSocio[s.recibidoPor] || '') : '') + '</td>' : '') + '</tr>';
     });
     h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num">TOTAL ADELANTOS</td><td class="num">' + S(r.totalAdelantos) +
-      '</td><td colspan="' + (conRec ? 3 : 2) + '"></td></tr></tfoot></table></section>';
+      '</td><td colspan="' + (conRec ? 4 : 3) + '"></td></tr></tfoot></table></section>';
+
+    // Recaudado por boletero
+    if (r.boleteros.length) {
+      var tb = { n: 0, y: 0, e: 0, t: 0 };
+      h += '<section><h2>3. Recaudado por boletero</h2><table class="pd-bol"><thead><tr><th>Boletero / personal</th><th class="num">Separaciones</th>' +
+        '<th class="num">Yape</th><th class="num">Efectivo</th><th class="num">Total recaudado</th></tr></thead><tbody>';
+      r.boleteros.forEach(function (g) {
+        tb.n += g.n; tb.y += g.yape; tb.e += g.efectivo; tb.t += g.total;
+        h += '<tr><td>' + esc(g.nombre) + '</td><td class="num">' + g.n + '</td><td class="num">' + S(g.yape) + '</td><td class="num">' + S(g.efectivo) +
+          '</td><td class="num"><b>' + S(g.total) + '</b></td></tr>';
+      });
+      h += '</tbody><tfoot><tr class="tot"><td>TOTAL</td><td class="num">' + tb.n + '</td><td class="num">' + S(tb.y) + '</td><td class="num">' + S(tb.e) +
+        '</td><td class="num">' + S(tb.t) + '</td></tr></tfoot></table>';
+      r.boleteros.forEach(function (g) {
+        h += '<div class="pd-grupo"><h3>' + esc(g.nombre) + '</h3><table><thead><tr><th class="n">N°</th><th>Cliente</th><th>Mz.</th><th>Lotes</th><th>N° celular</th>' +
+          '<th class="num">Adelanto</th><th>Opción</th><th>Día de firma</th></tr></thead><tbody>';
+        g.indices.forEach(function (i, j) {
+          var s = l.separaciones[i];
+          h += '<tr><td class="n">' + (j + 1) + '</td><td>' + esc(s.cliente) + '</td><td>' + esc(s.manzana) + '</td><td>' + esc(s.lotes) + '</td>' +
+            '<td>' + partirCel(s.celular).map(esc).join('<br>') + '</td><td class="num">' + (s.adelanto === '' ? '' : S(s.adelanto)) + '</td>' +
+            '<td>' + esc(s.opcion) + '</td><td>' + fechaDMY(s.fecha) + '</td></tr>';
+        });
+        h += '</tbody><tfoot><tr class="tot"><td colspan="5" class="num">TOTAL ' + esc(g.nombre.toUpperCase()) + '</td><td class="num">' + S(g.total) +
+          '</td><td colspan="2"></td></tr></tfoot></table></div>';
+      });
+      h += '</section>';
+    }
+    var sec = r.boleteros.length ? 4 : 3;
 
     // Gastos
-    h += '<section><h2>3. Gastos</h2><table><thead><tr><th class="n">N°</th><th>Concepto</th><th>Detalle</th><th class="num">Costo</th></tr></thead><tbody>';
+    h += '<section><h2>' + sec + '. Gastos</h2><table><thead><tr><th class="n">N°</th><th>Concepto</th><th>Detalle</th><th class="num">Costo</th></tr></thead><tbody>';
     l.gastos.forEach(function (g, i) {
       var det = g.tipo === 'personal' ? C.pos(g.cantidad) + ' persona(s) × ' + S(g.precioUnit) : 'Monto fijo';
       h += '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(g.concepto) + '</td><td>' + det + '</td><td class="num">' + S(r.costos[i]) + '</td></tr>';
@@ -598,7 +662,7 @@
     h += '</tbody><tfoot><tr class="tot"><td colspan="3" class="num">TOTAL GASTOS</td><td class="num">' + S(r.totalGastos) + '</td></tr></tfoot></table></section>';
 
     // Resultado
-    h += '<section class="pd-keep"><h2>4. Resultado</h2><table class="pd-res"><tbody>' +
+    h += '<section class="pd-keep"><h2>' + (sec + 1) + '. Resultado</h2><table class="pd-res"><tbody>' +
       '<tr><td>Total adelantos</td><td class="num">' + S(r.totalAdelantos) + '</td></tr>' +
       '<tr><td>(−) Total gastos</td><td class="num">' + S(r.totalGastos) + '</td></tr>' +
       '<tr class="hl"><td>MONTO TOTAL RECAUDADO</td><td class="num">' + S(r.recaudado) + '</td></tr>' +
@@ -607,7 +671,7 @@
       '</tbody></table></section>';
 
     // Distribución
-    h += '<section class="pd-keep"><h2>5. Distribución de ganancias</h2><table class="pd-dist"><thead><tr><th class="n">N°</th><th>Socio</th>' +
+    h += '<section class="pd-keep"><h2>' + (sec + 2) + '. Distribución de ganancias</h2><table class="pd-dist"><thead><tr><th class="n">N°</th><th>Socio</th>' +
       '<th class="num">Le corresponde</th><th class="num">Descuento (Yape)</th><th class="num">Monto final</th><th>Situación</th></tr></thead><tbody>';
     r.distribucion.forEach(function (d) {
       h += '<tr><td class="n">' + d.n + '</td><td>' + esc(d.nombre || ('Socio ' + d.n)) + '</td><td class="num">' + S(r.porSocio) + '</td>' +
@@ -617,12 +681,6 @@
     if (!r.distribucion.length) h += '<tr><td colspan="6">Sin socios registrados.</td></tr>';
     h += '</tbody></table></section>';
 
-    // Firmas
-    if (l.socios.length) {
-      h += '<section class="pd-keep pd-firmas">';
-      l.socios.forEach(function (s) { h += '<div class="pd-firma">' + esc(nombreSocio[s.id]) + '</div>'; });
-      h += '</section>';
-    }
     $('printDoc').innerHTML = h;
   }
 
@@ -649,6 +707,11 @@
     L.push('');
     L.push('Separaciones: ' + l.separaciones.filter(function (s) { return C.pos(s.adelanto) > 0; }).length);
     L.push('Total adelantos: ' + C.soles(r.totalAdelantos));
+    var bols = r.boleteros.filter(function (g) { return g.clave; });
+    if (bols.length) {
+      L.push('Recaudado por boletero:');
+      r.boleteros.forEach(function (g) { L.push('  • ' + g.nombre + ' (' + g.n + ' sep.): ' + C.soles(g.total)); });
+    }
     L.push('Gastos: ' + C.soles(r.totalGastos));
     l.gastos.forEach(function (g, i) {
       if (!g.concepto && !r.costos[i]) return;

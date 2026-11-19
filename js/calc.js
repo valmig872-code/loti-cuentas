@@ -46,6 +46,40 @@
 
   var EPS = 0.005;
 
+  /** Clave para agrupar boleteros: sin tildes, sin mayúsculas ni espacios de más. */
+  function claveNombre(n) {
+    return String(n || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  /** Separaciones agrupadas por boletero / personal que separó (las vacías se ignoran). */
+  function porBoletero(lot) {
+    var grupos = [], idx = {}, sin = null;
+    (lot.separaciones || []).forEach(function (s, i) {
+      if (!(String(s.cliente || '').trim() || pos(s.adelanto) > 0)) return;
+      var k = claveNombre(s.boletero);
+      var g;
+      if (!k) {
+        if (!sin) sin = { clave: '', nombre: 'Sin boletero', indices: [], n: 0, yape: 0, efectivo: 0, total: 0 };
+        g = sin;
+      } else {
+        if (!idx[k]) { idx[k] = { clave: k, nombre: '', escrituras: {}, indices: [], n: 0, yape: 0, efectivo: 0, total: 0 }; grupos.push(idx[k]); }
+        g = idx[k];
+        var esc = String(s.boletero).replace(/\s+/g, ' ').trim();
+        g.escrituras[esc] = (g.escrituras[esc] || 0) + 1;
+        // el nombre mostrado es la forma más escrita (en empate, la que empieza con mayúscula)
+        var may = /^[A-ZÁÉÍÓÚÑ]/;
+        if (!g.nombre || g.escrituras[esc] > g.escrituras[g.nombre] ||
+            (g.escrituras[esc] === g.escrituras[g.nombre] && may.test(esc) && !may.test(g.nombre))) g.nombre = esc;
+      }
+      var m = pos(s.adelanto);
+      g.indices.push(i); g.n++; g.total += m;
+      if (s.opcion === 'Yape') g.yape += m;
+      if (s.opcion === 'Efectivo') g.efectivo += m;
+    });
+    if (sin) grupos.push(sin);
+    return grupos;
+  }
+
   function estado(montoFinal) {
     if (montoFinal < -EPS) return 'debe devolver';
     if (montoFinal > EPS) return 'se le debe pagar';
@@ -91,7 +125,8 @@
       nSocios: nSocios,
       porSocio: porSocio,
       distribucion: distribucion,
-      yapeSinAsignar: yapeSinAsignar
+      yapeSinAsignar: yapeSinAsignar,
+      boleteros: porBoletero(lot)
     };
   }
 
@@ -106,6 +141,6 @@
 
   global.Calc = {
     num: num, pos: pos, costoGasto: costoGasto, yapeAutomatico: yapeAutomatico,
-    yapeSocio: yapeSocio, estado: estado, calcular: calcular, soles: soles, EPS: EPS
+    yapeSocio: yapeSocio, estado: estado, porBoletero: porBoletero, claveNombre: claveNombre, calcular: calcular, soles: soles, EPS: EPS
   };
 })(typeof window !== 'undefined' ? window : this);

@@ -82,6 +82,7 @@
               <th class="num">Adelanto (S/)</th>
               <th>Opción</th>
               <th>Día de firma</th>
+              <th>Boletero / personal</th>
               <th class="col-recibido">Recibido por (socio)</th>
               <th class="c-del no-print"><span class="sr-only">Eliminar</span></th>
             </tr>
@@ -91,7 +92,7 @@
             <tr>
               <td colspan="5" class="tot-label">TOTAL adelantos</td>
               <td class="num calc strong" id="totAdelantos"></td>
-              <td colspan="4" class="tfoot-fill"></td>
+              <td colspan="5" class="tfoot-fill"></td>
             </tr>
           </tfoot>
         </table>
@@ -101,7 +102,30 @@
       <button type="button" class="btn btn-add no-print" data-action="addSep">+ Agregar separación</button>
     </section>
 
-    <!-- 4. Gastos -->
+    <!-- 4. Recaudado por boletero -->
+    <section class="card">
+      <div class="card-head"><h2>Recaudado por boletero</h2></div>
+      <p class="hint">Se arma solo con la columna "Boletero / personal" de la lista de separaciones. Toca un nombre para ver sus lotes.</p>
+      <div class="table-scroll">
+        <table class="grid" id="tblBol">
+          <thead>
+            <tr>
+              <th>Boletero / personal</th>
+              <th class="num">Total recaudado</th>
+              <th class="num">Sep.</th>
+              <th class="num">Yape</th>
+              <th class="num">Efectivo</th>
+            </tr>
+          </thead>
+          <tbody id="bolBody"></tbody>
+          <tfoot id="bolFoot"></tfoot>
+        </table>
+      </div>
+      <div id="bolDetalle" class="bol-detalle"></div>
+      <datalist id="dlBoleteros"></datalist>
+    </section>
+
+    <!-- 5. Gastos -->
     <section class="card">
       <div class="card-head"><h2>Gastos</h2></div>
       <div class="table-scroll">
